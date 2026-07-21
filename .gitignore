@@ -1,5 +1,7 @@
+
+
 build/
 
 cmake-build-*/
 
-pico_*/
+pico_sdk_import.cmake
