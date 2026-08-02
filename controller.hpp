@@ -53,8 +53,8 @@ class AngleController {
 
     double R_wheel = 0.065/2; // [m]
     double mr = 0.18; // [kg] - mass of rotation system
-    double Length = 0.0412; // [m] - Length measured from the wheel axis and mass center
-    double mb = 0.3; // [kg] - mass of main body - 76(g) + PCB
+    double Length = 0.2212; // [m] - Length measured from the wheel axis and mass center
+    double mb = 0.22; // [kg] - mass of main body - 76(g) + PCB
     double g = 9.81; // [m/s^2] - gravitational acceleration
     double Jb = 0.0000996377; // [kg*m^2] - moment of inertia of main system
 
@@ -68,8 +68,8 @@ class AngleController {
     double G_ratio  = 9.6;    // Gear ratio
 
     double v_max = 5.0; // [V] - maximum voltage applied to the motor
-    double v_deadzone = 4.0; // [V] - voltage below which the motor does not respond
-    double deadband = 0.1; // [rad] - angle range within which the controller does not act (0.57 degrees)
+    double v_deadzone = 0.4; // [V] - voltage below which the motor does not respond
+    double deadband = 0.01; // [rad] - angle range within which the controller does not act (2.86 degrees)
 
     double Controller(double theta, double dt);
 
@@ -82,6 +82,7 @@ class AngleController {
     double theta_hat = 0.0; // estimated angle
     double theta_dot_hat = 0.0; // estimated angular velocity
     double u = 0.0; // control input
+    double u_prev = 0.0; // previous control input
 
     std::array<std::array<double, 2>, 2> A_reduce = {{ {0, 1}, {(mb * g * Length) / J_axle, -(2 * std::pow(G_ratio, 2.0) * Kt * Ke) / (J_axle * R_motor)} }};
 
@@ -89,9 +90,9 @@ class AngleController {
 
     std::array<std::array<double, 2>, 1> C_reduce = {{ {1, 0} }};
 
-    double K[2] = { 3.5644 ,0.1011 }; // Controller gains - to be tuned
-    double L[2] = { 75.8918, 740.0703 }; // Observer gains - to be tuned
-
+    double K[2] = { 6.32, 3.21 }; // Controller gains - to be tuned
+    double L[2] = { 20.3687, 130.7140 }; // Observer gains - to be tuned
+    
 };
 
 // class AngleController {

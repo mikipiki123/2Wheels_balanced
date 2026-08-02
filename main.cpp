@@ -392,6 +392,20 @@ int main() {
     gpio_set_irq_enabled_with_callback(ENCODER_A, GPIO_IRQ_EDGE_RISE, true, &encoder_callback);
 
     // ---------------------------------------------------------
+    // 3. Motor Direction GPIO Setup
+    // ---------------------------------------------------------
+    // Explicitly initialize AND set direction
+    gpio_init(AIN1_PIN);
+    gpio_set_dir(AIN1_PIN, GPIO_OUT);
+    gpio_init(AIN2_PIN);
+    gpio_set_dir(AIN2_PIN, GPIO_OUT);
+
+    gpio_init(BIN1_PIN);
+    gpio_set_dir(BIN1_PIN, GPIO_OUT);
+    gpio_init(BIN2_PIN);
+    gpio_set_dir(BIN2_PIN, GPIO_OUT);
+
+    // ---------------------------------------------------------
     // 3. Main Control Loop
     // ---------------------------------------------------------
     uint32_t speed_step = pwm_wrap / 4; // 25% increments
@@ -431,15 +445,24 @@ int main() {
         next = delayed_by_us(next, PERIOD_MS * 1000);
         
         if (imu_read_accel(accel)) {
+
+            auto start = std::chrono::high_resolution_clock::now();
+
+            static double angle_filtered = 0.0;
+            double raw_angle = atan2(accel[0], accel[2]);
+            angle_filtered = 0.8 * angle_filtered + 0.2 * raw_angle; // Smooth raw accelerometer noise
+
+            double u = angleController.Controller(angle_filtered, PERIOD_MS/1000.0); // dt = 0.01s for 100Hz
+
+            auto end = std::chrono::high_resolution_clock::now();
+            double elapsed_ms = std::chrono::duration<double, std::milli>(end - start).count();
+            std::cout << "Execution time: " << elapsed_ms << " ms" << std::endl;
+            // Ensure elapsed_ms is consistently <= 10.0 ms!
+
             // printf("Accel X: %5.3f g | Y: %5.3f g | Z: %5.3f g\n", accel[0], accel[1], accel[2]); // Assuming accel[0] is the angle in radians
-            
-            double angle_rad = atan2(accel[0], accel[2]); // Calculate angle from accelerometer data
-
-            double u = angleController.Controller(angle_rad, PERIOD_MS/1000.0); // Assuming dt = 0.1  for this example
 
             
-            // std::cout << "Execution time: " << delta.count()*1000 << " ms\n" << std::endl;
-            std::cout << "Angle: " << angle_rad << "\t rad | Control Input (Voltage): " << u << "\tV" << std::endl;
+            // std::cout << "Angle: " << angle_rad << "\t rad | Control Input (Voltage): " << u << "\tV" << std::endl;
 
             // pwm_set_chan_level(slice_num, channel, u * 1000.0); // max = 5000
             set_motors_voltage(u, angleController.v_max);
