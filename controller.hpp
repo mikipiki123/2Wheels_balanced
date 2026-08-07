@@ -51,21 +51,22 @@ class AngleController {
 
     public:
 
-    double R_wheel = 0.065/2; // [m]
-    double mr = 0.18; // [kg] - mass of rotation system
-    double Length = 0.2212; // [m] - Length measured from the wheel axis and mass center
-    double mb = 0.22; // [kg] - mass of main body - 76(g) + PCB
-    double g = 9.81; // [m/s^2] - gravitational acceleration
-    double Jb = 0.0000996377; // [kg*m^2] - moment of inertia of main system
+    const double R_wheel = 0.0325; // [m]
+    const double mw = 0.039;          // Mass of ONE wheel [kg]
+    const double Length = 0.05; // [m] - Length measured from the wheel axis and mass center
+    const double mb = 0.141; // [kg] - mass of main body - 76(g) + PCB
+    const double g = 9.81; // [m/s^2] - gravitational acceleration
+    const double Jb = 0.001135; // [kg*m^2] - moment of inertia of main system
 
 
 
 
     // --- Motor Parameters (JGB37-520 Typical Values) ---
-    double R_motor  = 6.5;     // [Ohm] Terminal resistance
-    double Kt       = 0.025;   // [Nm/A] Torque constant
-    double Ke       = 0.025;   // [V/(rad/s)] Back-EMF constant
-    double G_ratio  = 9.6;    // Gear ratio
+    const double R_motor  = 6.5;     // [Ohm] Terminal resistance
+    const double Kt       = 0.015;   // [Nm/A] Torque constant
+    const double Ke       = 0.015;   // [V/(rad/s)] Back-EMF constant
+    const double G_ratio  = 9.6;    // Gear ratio
+    const double num_motors = 2;      // Total number of drive motors
 
     double v_max = 5.0; // [V] - maximum voltage applied to the motor
     double v_deadzone = 0.4; // [V] - voltage below which the motor does not respond
@@ -76,7 +77,8 @@ class AngleController {
 
     private:
 
-    double J_axle = Jb + mb * (std::pow(Length, 2.0)); // inertia in motor's axis
+    // double J_axle = Jb + mb * (std::pow(Length, 2.0)); // inertia in motor's axis
+    double Jtot = Jb + mb * std::pow(Length, 2.0); 
 
     // initial parameters
     double theta_hat = 0.0; // estimated angle
@@ -84,44 +86,15 @@ class AngleController {
     double u = 0.0; // control input
     double u_prev = 0.0; // previous control input
 
-    std::array<std::array<double, 2>, 2> A_reduce = {{ {0, 1}, {(mb * g * Length) / J_axle, -(2 * std::pow(G_ratio, 2.0) * Kt * Ke) / (J_axle * R_motor)} }};
+    std::array<std::array<double, 2>, 2> A_reduce = {{ {0, 1},
+                                                    {(mb * g * Length) / Jtot, -((num_motors * Kt * Ke * std::pow(G_ratio, 2.0)) / (R_motor * Jtot))} }};
 
-    std::array<std::array<double, 1>, 2> B_reduce = {{ {0}, (2 * G_ratio * Kt)/(J_axle * R_motor)}};
+    std::array<std::array<double, 1>, 2> B_reduce = {{ {0}, num_motors * (Kt * G_ratio) / (R_motor * Jtot)}};
 
     std::array<std::array<double, 2>, 1> C_reduce = {{ {1, 0} }};
 
-    double K[2] = { 6.32, 3.21 }; // Controller gains - to be tuned
-    double L[2] = { 20.3687, 130.7140 }; // Observer gains - to be tuned
+    double K[2] = { 4.2346, 0.2377 }; // Controller gains - to be tuned
+    double L[2] = { 40.5156, 244.7479 }; // Observer gains - to be tuned
     
 };
 
-// class AngleController {
-// public:
-//     // Physical parameters
-//     double mr = 0.18;        // [kg] - mass of rotation system
-//     double Length = 0.0412;  // [m]  - distance to mass center
-//     double mb = 0.3;         // [kg] - mass of main body
-//     double g = 9.81;         // [m/s^2] - gravity
-
-//     // Actuator & Deadband limits
-//     double v_max = 5.0;      // [V]
-//     double v_deadzone = 3.9; // [V]
-//     double deadband = 0.05;  // [rad]
-
-//     double Controller(double theta, double dt);
-
-//     private:
-//     // Internal states
-//     double theta_hat = 0.0;     // estimated angle
-//     double theta_dot_hat = 0.0; // estimated angular velocity
-//     double u = 0.0;             // control input voltage
-
-//     // Corrected Reduced State Matrices
-//     std::array<std::array<double, 2>, 2> A_reduce = {{{0.0, 1.0}, {102.05, -3.50}}};
-//     std::array<std::array<double, 1>, 2> B_reduce = {{{0.0}, {22.00}}};
-//     std::array<std::array<double, 2>, 1> C_reduce = {{{1.0, 0.0}}};
-
-//     // Matched gains for dt = 0.01s (10 ms)
-//     double K[2] = { 10.29, 0.82 };   // Controller gains
-//     double L[2] = { 66.2, 1007.8 }; // Observer gains
-// };
