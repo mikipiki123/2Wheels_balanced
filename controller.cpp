@@ -5,11 +5,13 @@ double AngleController::Controller(double theta, double dt) {
     // 1. Calculate observer angle error
     double angle_error = theta - this->theta_hat;
 
+    // std::cout << "Measured Angle: " << theta << " rad | Estimated Angle: " << this->theta_hat << " rad | Angle Error: " << angle_error << " rad" << std::endl;
+
     // 2. Observer state derivatives (uses this->u from the PREVIOUS loop cycle)
     double d_theta_hat = this->theta_dot_hat + this->L[0] * angle_error;
     double d_theta_dot_hat = (this->A_reduce[1][0] * this->theta_hat) + 
                             (this->A_reduce[1][1] * this->theta_dot_hat) + 
-                            (this->B_reduce[1][0] * this->u) + // Uses stored class variable
+                            (this->B_reduce[1][0] * this->u_linear) + // Uses stored class variable
                             (this->L[1] * angle_error);
 
     // 3. Update estimates using Forward Euler integration
@@ -18,7 +20,7 @@ double AngleController::Controller(double theta, double dt) {
 
     // Simple Exponential Moving Average (Low-Pass Filter)
     static float theta_dot_prev = 0.0;
-    float alpha_theta_dot = 0.15; // Filter strength (0.05 = heavy smoothing, 0.3 = light)
+    float alpha_theta_dot = 0.2; // Filter strength (0.05 = heavy smoothing, 0.3 = light)
 
     theta_dot_prev = (alpha_theta_dot * theta_dot_hat) + ((1.0 - alpha_theta_dot) * theta_dot_prev);
 
@@ -34,30 +36,32 @@ double AngleController::Controller(double theta, double dt) {
 
 
     // 4. Compute unconstrained control input from estimated states
-    double u_unconstrained = -this->K[0] * this->theta_hat - this->K[1] * this->theta_dot_hat;
+    double u_unconstrained = -this->K[0] * this->theta_hat - this->K[1] * theta_dot_prev;
 
     // 5. Apply saturation [-v_max, +v_max]
     double u_saturated = std::clamp(u_unconstrained, -this->v_max, this->v_max);
     double abs_v = std::abs(u_saturated);
 
-    // 6. UPDATE THE CLASS MEMBER VARIABLE directly (do not declare 'double u')
-    if (std::abs(theta) > this->deadband) {
-        // Map control demand [0V to 5V] into active window [4V to 5V]
+    // 6. UPDATE THE CLASS MEMBER VARIABLES
+    if (std::abs(this->theta_hat) > this->deadband && abs_v > 0.15) { 
         double u_compensated = this->v_deadzone + (abs_v / this->v_max) * (this->v_max - this->v_deadzone);
 
-        // Save directly to class member variable this->u
+        // Physical output gets the friction offset
         this->u = std::copysign(u_compensated, u_saturated);
+        
+        // Observer gets the pure LQR intent
+        this->u_linear = u_saturated; 
     } else {
-        this->u = 0.0; // Turn off motors when balanced within deadband
+        this->u = 0.0; 
+        this->u_linear = 0.0;
     }
-
     
     // float alpha_u = 0.9; // Filter strength (0.05 = heavy smoothing, 0.3 = light)
 
     // this->u_prev = (alpha_u * this->u) + ((1.0 - alpha_u) * this->u_prev);
 
     // Print format: angle,angular_velocity,voltage
-    printf("%.4f,%.4f,%.4f\n", theta, theta_dot_prev, this->u);
+    printf("%.4f,%.4f,%.4f\n", this->theta_hat, theta_dot_prev, this->u);
 
     // 7. Return the updated class variable
     return this->u;

@@ -193,7 +193,7 @@
 #include <chrono>
 #include <thread>
 
-#define PERIOD_MS 6 // 6 ms period for 167 Hz frequency
+#define PERIOD_MS 10 // 10 ms period for 100 Hz frequency
 
 // Waveshare Pico 10-DOF I2C pins
 #define I2C_PORT i2c1
@@ -450,10 +450,10 @@ int main() {
 
             static double angle_filtered = 0.0;
             double raw_angle = atan2(accel[0], accel[2]);
-            std::cout << "Raw Angle: " << raw_angle << " rad | " << (raw_angle * 180.0 / M_PI) << " deg" << std::endl;
-            // angle_filtered = 0.8 * angle_filtered + 0.2 * raw_angle; // Smooth raw accelerometer noise
+            // std::cout << "Raw Angle: " << raw_angle << " rad | " << (raw_angle * 180.0 / M_PI) << " deg" << std::endl;
+            angle_filtered = 0.8 * angle_filtered + 0.2 * raw_angle; // Smooth raw accelerometer noise
 
-            double u = angleController.Controller(raw_angle, PERIOD_MS/1000.0); // dt = 0.006s for 167Hz
+            double u = angleController.Controller(angle_filtered, PERIOD_MS/1000.0); // dt = 0.006s for 167Hz
 
             auto end = std::chrono::high_resolution_clock::now();
             double elapsed_ms = std::chrono::duration<double, std::milli>(end - start).count();
