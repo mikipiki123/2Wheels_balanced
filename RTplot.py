@@ -102,10 +102,10 @@ def update_plot(frame):
     ax2.grid(True, linestyle=':', alpha=0.7)
 
     # 3. Draw Voltage Plot
-    ax3.plot(timestamps, voltages, color='red', linewidth=2, label='Control Input (V)')
+    ax3.plot(timestamps, voltages, color='red', linewidth=2, label='Control Input (u)')
     ax3.set_xlabel('Time (s)', fontweight='bold')
-    ax3.set_ylabel('Voltage\n(V)', fontweight='bold')
-    ax3.set_ylim(-5.5, 5.5) # Locked to max supply range
+    ax3.set_ylabel('Control Input\n(rad/s)', fontweight='bold')
+    # ax3.set_ylim(-5.5, 5.5) # Locked to max supply range
     ax3.axhline(0, color='black', linestyle='--', linewidth=1)
     ax3.grid(True, linestyle=':', alpha=0.7)
 

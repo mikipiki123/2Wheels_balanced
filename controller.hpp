@@ -51,51 +51,48 @@ class AngleController {
 
     public:
 
-    const double R_wheel = 0.0325; // [m]
-    const double mw = 0.039;          // Mass of ONE wheel [kg]
-    const double Length = 0.04; // [m] - Length measured from the wheel axis and mass center
-    const double mb = 0.141; // [kg] - mass of main body - 76(g) + PCB
+    // const double R_wheel = 0.0325; // [m]
+    // const double mw = 0.039;          // Mass of ONE wheel [kg]
+    const double Length = 0.1; // [m] - Length measured from the wheel axis and mass center
+    const double mb = 0.5; // [kg] - mass of main body - 76(g) + PCB
     const double g = 9.81; // [m/s^2] - gravitational acceleration
-    const double Jb = 0.0004965; // [kg*m^2] - moment of inertia of main system
+    const double Jb = 0.005; // [kg*m^2] - moment of inertia of main system
+    const double b_fric = 0.001; // [N*m*s] - Viscous friction/damping coefficient at the motor shaft
 
 
-
-
-    // --- Motor Parameters (JGB37-520 Typical Values) ---
-    const double R_motor  = 6.5;     // [Ohm] Terminal resistance
-    const double Kt       = 0.015;   // [Nm/A] Torque constant
-    const double Ke       = 0.015;   // [V/(rad/s)] Back-EMF constant
-    const double G_ratio  = 9.6;    // Gear ratio
-    const double num_motors = 2;      // Total number of drive motors
-
-    double v_max = 5.0; // [V] - maximum voltage applied to the motor
-    double v_deadzone = 0.4; // [V] - voltage below which the motor does not respond
-    double deadband = 0.02; // [rad] - angle range within which the controller does not act (2.86 degrees)
+    // double v_max = 5.0; // [V] - maximum voltage applied to the motor
+    // double v_deadzone = 0.0; // [V] - voltage below which the motor does not respond
+    // double deadband = 0.02; // [rad] - angle range within which the controller does not act (2.86 degrees)
 
     double Controller(double theta, double dt);
 
 
-    private:
+    // private:
 
     // double J_axle = Jb + mb * (std::pow(Length, 2.0)); // inertia in motor's axis
-    double Jtot = Jb + mb * std::pow(Length, 2.0); 
+    // double Jtot = Jb + mb * std::pow(Length, 2.0); 
+    double Jtot = 0.005;
 
     // initial parameters
     double theta_hat = 0.0; // estimated angle
     double theta_dot_hat = 0.0; // estimated angular velocity
     double u = 0.0; // control input
-    double u_linear = 0.0; // The pure linear command for the observer
-    double u_prev = 0.0; // previous control input
+
+    double theta_dot_prev = 0.0;
 
     std::array<std::array<double, 2>, 2> A_reduce = {{ {0, 1},
-                                                    {(mb * g * Length) / Jtot, -((num_motors * Kt * Ke * std::pow(G_ratio, 2.0)) / (R_motor * Jtot))} }};
+                                                    {123.56, 0} }};
 
-    std::array<std::array<double, 1>, 2> B_reduce = {{ {0}, num_motors * (Kt * G_ratio) / (R_motor * Jtot)}};
+    // std::array<std::array<double, 1>, 2> B_reduce = {{ {0}, 
+    //                                                 {1 / Jtot} }}; // when u defined as torque
+
+    std::array<std::array<double, 1>, 2> B_reduce = {{ {0}, 
+                                                    {-0.409}}}; // when u defined as acceleration (rad/s^2)
 
     std::array<std::array<double, 2>, 1> C_reduce = {{ {1, 0} }};
 
-    double K[2] = { 4.2346, 0.1537 }; // Controller gains - to be tuned
-    double L[2] = { 101.8374, 1713.9300 }; // Observer gains - to be tuned
+    double K[2] = { -10, -1.5 }; // Controller gains (u = -K*x)
+    double L[2] = { 35, 250 }; // Luenberger observer gains
     
 };
 

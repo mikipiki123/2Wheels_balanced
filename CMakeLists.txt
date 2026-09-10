@@ -53,6 +53,7 @@ target_link_libraries(2Wheels_balanced
         hardware_pwm
         hardware_i2c
         hardware_gpio
+        hardware_clocks
         )
 
 
