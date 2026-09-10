@@ -38,6 +38,7 @@ pico_sdk_init()
 add_executable(2Wheels_balanced
     main.cpp
     controller.cpp
+    hardware.cpp
  )
 
 pico_set_program_name(2Wheels_balanced "2Wheels_balanced")

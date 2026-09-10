@@ -10,94 +10,95 @@
 #include "controller.hpp"
 #include <chrono>
 #include <thread>
+#include "hardware.hpp"
 
 #define PERIOD_MS 10 // 10 ms period for 100 Hz frequency
 
-// Waveshare Pico 10-DOF I2C pins
-#define I2C_PORT i2c1
-#define I2C_SDA 6 
-#define I2C_SCL 7
-#define IMU_ADDR 0x68
+// // Waveshare Pico 10-DOF I2C pins
+// #define I2C_PORT i2c1
+// #define I2C_SDA 6 
+// #define I2C_SCL 7
+// #define IMU_ADDR 0x68
 
-// --- ICM20948 Registers ---
-#define ICM_WHOAMI      0x00 // Expected ID: 0xEA
-#define ICM_PWR_MGMT_1  0x06
-#define ICM_ACCEL_START 0x2D
+// // --- ICM20948 Registers ---
+// #define ICM_WHOAMI      0x00 // Expected ID: 0xEA
+// #define ICM_PWR_MGMT_1  0x06
+// #define ICM_ACCEL_START 0x2D
 
-// --- MPU9250 Registers ---
-#define MPU_WHOAMI      0x75 // Expected ID: 0x71 (or 0x73 for MPU9255)
-#define MPU_PWR_MGMT_1  0x6B
-#define MPU_ACCEL_START 0x3B
+// // --- MPU9250 Registers ---
+// #define MPU_WHOAMI      0x75 // Expected ID: 0x71 (or 0x73 for MPU9255)
+// #define MPU_PWR_MGMT_1  0x6B
+// #define MPU_ACCEL_START 0x3B
 
-// Global variable to hold the correct starting register for the accelerometer
-uint8_t accel_reg_start = 0; 
+// // Global variable to hold the correct starting register for the accelerometer
+// uint8_t accel_reg_start = 0; 
 
-bool imu_init() {
-    uint8_t chip_id = 0;
-    uint8_t reg;
+// bool imu_init() {
+//     uint8_t chip_id = 0;
+//     uint8_t reg;
     
-    // 1. Try to read the ICM20948 Identity Register
-    reg = ICM_WHOAMI;
-    i2c_write_timeout_us(I2C_PORT, IMU_ADDR, &reg, 1, true, 100000);
-    i2c_read_timeout_us(I2C_PORT, IMU_ADDR, &chip_id, 1, false, 100000);
+//     // 1. Try to read the ICM20948 Identity Register
+//     reg = ICM_WHOAMI;
+//     i2c_write_timeout_us(I2C_PORT, IMU_ADDR, &reg, 1, true, 100000);
+//     i2c_read_timeout_us(I2C_PORT, IMU_ADDR, &chip_id, 1, false, 100000);
     
-    if (chip_id == 0xEA) {
-        printf("Hardware Detected: ICM20948 (Rev 1.0)\n");
-        accel_reg_start = ICM_ACCEL_START;
+//     if (chip_id == 0xEA) {
+//         printf("Hardware Detected: ICM20948 (Rev 1.0)\n");
+//         accel_reg_start = ICM_ACCEL_START;
         
-        // Wake up ICM20948
-        uint8_t buf[2] = {ICM_PWR_MGMT_1, 0x01};
-        i2c_write_timeout_us(I2C_PORT, IMU_ADDR, buf, 2, false, 100000);
-        sleep_ms(100);
-        return true;
-    }
+//         // Wake up ICM20948
+//         uint8_t buf[2] = {ICM_PWR_MGMT_1, 0x01};
+//         i2c_write_timeout_us(I2C_PORT, IMU_ADDR, buf, 2, false, 100000);
+//         sleep_ms(100);
+//         return true;
+//     }
     
-    // 2. Try to read the MPU9250 Identity Register
-    reg = MPU_WHOAMI;
-    i2c_write_timeout_us(I2C_PORT, IMU_ADDR, &reg, 1, true, 100000);
-    i2c_read_timeout_us(I2C_PORT, IMU_ADDR, &chip_id, 1, false, 100000);
+//     // 2. Try to read the MPU9250 Identity Register
+//     reg = MPU_WHOAMI;
+//     i2c_write_timeout_us(I2C_PORT, IMU_ADDR, &reg, 1, true, 100000);
+//     i2c_read_timeout_us(I2C_PORT, IMU_ADDR, &chip_id, 1, false, 100000);
     
-    if (chip_id == 0x71 || chip_id == 0x73) {
-        printf("Hardware Detected: MPU9250/9255 (Rev 2.1)\n");
-        accel_reg_start = MPU_ACCEL_START;
+//     if (chip_id == 0x71 || chip_id == 0x73) {
+//         printf("Hardware Detected: MPU9250/9255 (Rev 2.1)\n");
+//         accel_reg_start = MPU_ACCEL_START;
         
-        // Wake up MPU9250
-        uint8_t buf[2] = {MPU_PWR_MGMT_1, 0x01};
-        i2c_write_timeout_us(I2C_PORT, IMU_ADDR, buf, 2, false, 100000);
-        sleep_ms(100);
-        return true;
-    }
+//         // Wake up MPU9250
+//         uint8_t buf[2] = {MPU_PWR_MGMT_1, 0x01};
+//         i2c_write_timeout_us(I2C_PORT, IMU_ADDR, buf, 2, false, 100000);
+//         sleep_ms(100);
+//         return true;
+//     }
 
-    printf("ERROR: Could not verify chip identity.\n");
-    return false;
-}
+//     printf("ERROR: Could not verify chip identity.\n");
+//     return false;
+// }
 
-bool imu_read_accel(float *accel_g) {
+// bool imu_read_accel(float *accel_g) {
 
-    if (accel_reg_start == 0) return false; // Safety check
+//     if (accel_reg_start == 0) return false; // Safety check
     
-    uint8_t data[6];
+//     uint8_t data[6];
     
-    // Point to whichever register we dynamically assigned during init
-    int ret = i2c_write_timeout_us(I2C_PORT, IMU_ADDR, &accel_reg_start, 1, true, 100000);
-    if (ret < 0) return false;
+//     // Point to whichever register we dynamically assigned during init
+//     int ret = i2c_write_timeout_us(I2C_PORT, IMU_ADDR, &accel_reg_start, 1, true, 100000);
+//     if (ret < 0) return false;
     
-    // Read 6 consecutive bytes 
-    ret = i2c_read_timeout_us(I2C_PORT, IMU_ADDR, data, 6, false, 100000);
-    if (ret < 0) return false;
+//     // Read 6 consecutive bytes 
+//     ret = i2c_read_timeout_us(I2C_PORT, IMU_ADDR, data, 6, false, 100000);
+//     if (ret < 0) return false;
     
-    // Combine high and low bytes (16-bit, big-endian)
-    int16_t accel_x = (data[0] << 8) | data[1];
-    int16_t accel_y = (data[2] << 8) | data[3];
-    int16_t accel_z = (data[4] << 8) | data[5];
+//     // Combine high and low bytes (16-bit, big-endian)
+//     int16_t accel_x = (data[0] << 8) | data[1];
+//     int16_t accel_y = (data[2] << 8) | data[3];
+//     int16_t accel_z = (data[4] << 8) | data[5];
     
-    // Convert to g (Both chips use a default scale factor of 16384 LSB/g)
-    accel_g[0] = (float)accel_x * (M_PI_2)/ 16384.0f;
-    accel_g[1] = (float)accel_y * (M_PI_2) / 16384.0f;
-    accel_g[2] = (float)accel_z * (M_PI_2) / 16384.0f;
+//     // Convert to g (Both chips use a default scale factor of 16384 LSB/g)
+//     accel_g[0] = (float)accel_x * (M_PI_2)/ 16384.0f;
+//     accel_g[1] = (float)accel_y * (M_PI_2) / 16384.0f;
+//     accel_g[2] = (float)accel_z * (M_PI_2) / 16384.0f;
     
-    return true;
-}
+//     return true;
+// }
 
 // GPIO Pin Definitions
     const uint STEP_PIN = 2; // GP2 (Pico Pin 4)
@@ -153,21 +154,23 @@ void set_motor_velocity(float rad_sec) {
 int main() {
     stdio_init_all();
 
-    // Initialize I2C for IMU
-    i2c_init(I2C_PORT, 400 * 1000);
-    gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
-    gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
-    gpio_pull_up(I2C_SDA);
-    gpio_pull_up(I2C_SCL);
+    IMU_sensor imu; // Create an instance of the IMU_sensor class
+
+    // // Initialize I2C for IMU
+    // i2c_init(I2C_PORT, 400 * 1000);
+    // gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
+    // gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
+    // gpio_pull_up(I2C_SDA);
+    // gpio_pull_up(I2C_SCL);
     
     sleep_ms(2000); 
     printf("Starting Auto-Detect IMU Accelerometer Read...\n");
     printf("--------------------------------------------\n");
     
-    if (!imu_init()) {
-        printf("Halting. Check wiring.\n");
-        while (1) { sleep_ms(1000); }
-    }
+    // if (!imu_init()) {
+    //     printf("Halting. Check wiring.\n");
+    //     while (1) { sleep_ms(1000); }
+    // }
 
     // Initialize Pins
     gpio_init(STEP_PIN);
@@ -184,23 +187,22 @@ int main() {
     gpio_set_function(STEP_PIN, GPIO_FUNC_PWM);
     gpio_set_function(STEP_PIN, GPIO_FUNC_PWM);
 
-    float accel[3];
 
     float theta_bias = 0.0;
 
-    {
-        float sum = 0.0;
-        for (int i = 0; i < 500; i++) {
-            if (imu_read_accel(accel)) {
-                float raw_angle = -atan2(accel[0], accel[2]); // negative sign to correct for mounting orientation
-                sum += raw_angle;
-            } else {
-                printf("Read failed during calibration! I2C bus error.\n");
-            }
-            sleep_ms(2); // 2 ms delay for 100 Hz sampling during calibration
-        }
-        theta_bias = sum / 500.0;
-    }
+    // {
+    //     float sum = 0.0;
+    //     for (int i = 0; i < 500; i++) {
+    //         if (imu_read_accel(accel)) {
+    //             float raw_angle = -atan2(accel[0], accel[2]); // negative sign to correct for mounting orientation
+    //             sum += raw_angle;
+    //         } else {
+    //             printf("Read failed during calibration! I2C bus error.\n");
+    //         }
+    //         sleep_ms(2); // 2 ms delay for 100 Hz sampling during calibration
+    //     }
+    //     theta_bias = sum / 500.0;
+    // }
     
     AngleController angleController;
 
@@ -213,21 +215,23 @@ int main() {
         // schedule next execution time
         next = delayed_by_us(next, PERIOD_MS * 1000);
         
-        if (imu_read_accel(accel)) {
+        if (true) { // imu_read_accel(accel)) {
 
             auto start = std::chrono::high_resolution_clock::now();
 
-            static double angle_filtered = 0.0;
-            double raw_angle = -atan2(accel[0], accel[2]); // negative sign to correct for mounting orientation
-            raw_angle -= theta_bias; // Remove bias from calibration
+            // static double angle_filtered = 0.0;
+            // double raw_angle = -atan2(accel[0], accel[2]); // negative sign to correct for mounting orientation
+            // raw_angle -= theta_bias; // Remove bias from calibration
             
-            angle_filtered = 0.8 * angle_filtered + 0.2 * raw_angle; // Smooth raw accelerometer noise
+            // angle_filtered = 0.8 * angle_filtered + 0.2 * raw_angle; // Smooth raw accelerometer noise
 
-            double u = angleController.Controller(angle_filtered, PERIOD_MS/1000.0); // dt = 0.01 s (10 ms) = 100 Hz
+            imu.read_sensor_fusion_x(PERIOD_MS * 1000); // Read sensor fusion data from IMU
+
+            double u = angleController.Controller(imu.angle_x, PERIOD_MS/1000.0); // dt = 0.01 s (10 ms) = 100 Hz
 
             w = w*0.98 + u*(PERIOD_MS/1000.0); // Integrate control input to get angular velocity command, with Leaky Integrator - 0.98
 
-            printf("%.4f,%.4f,%.4f\n", angleController.theta_hat, angleController.theta_dot_hat, w);
+            printf("%.4f,%.4f,%.4f\n", imu.angle_x, imu.angular_velocity_x, w);
 
             set_motor_velocity(w); // Apply control input to motors
 
