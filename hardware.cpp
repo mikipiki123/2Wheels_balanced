@@ -51,3 +51,58 @@ bool IMU_sensor::read_sensor_fusion_x(uint64_t delta_us) {
 
     return true;
 }
+
+
+MotorController::MotorController() {
+    // Initialize the motor controller
+    gpio_init(STEP_PIN);
+    gpio_set_dir(STEP_PIN, GPIO_OUT);
+
+    gpio_init(DIR_PIN);
+    gpio_set_dir(DIR_PIN, GPIO_OUT);
+
+    gpio_init(EN_PIN);
+    gpio_set_dir(EN_PIN, GPIO_OUT);
+    // Enable TMC2209 (Active LOW: LOW = Driver ON, HIGH = Motors Free-Wheeling)
+    gpio_put(EN_PIN, 0);
+    // Setup STEP Pins as PWM function outputs
+    gpio_set_function(STEP_PIN, GPIO_FUNC_PWM);
+    gpio_set_function(STEP_PIN, GPIO_FUNC_PWM);
+}
+
+void MotorController::set_motor_velocity(float rad_sec) {
+    uint slice_num = pwm_gpio_to_slice_num(STEP_PIN);
+    uint chan = pwm_gpio_to_channel(STEP_PIN);
+
+    // Stop output if requested speed is near zero
+    if (std::abs(rad_sec) < 0.001f || std::abs(rad_sec) > 10.0f) { // Safety limit to prevent excessive speed
+        pwm_set_enabled(slice_num, false);
+        return;
+    }
+
+    // Set Direction Pin (High = CW, Low = CCW)
+    gpio_put(DIR_PIN, rad_sec > 0.0f);
+
+    // Calculate step frequency in Hz
+    float total_steps_per_rev = STEPS_PER_REV * MICROSTEPS;
+    float step_freq = (std::abs(rad_sec) / (2.0f * M_PI)) * total_steps_per_rev;
+
+    // RP2040 PWM frequency math: f_pwm = f_sys / (clkdiv * (wrap + 1))
+    uint32_t sys_clk = clock_get_hz(clk_sys);
+    
+    // Dynamically calculate divider to maximize 16-bit wrap precision
+    float divider = (float)sys_clk / (step_freq * 65536.0f);
+    if (divider < 1.0f) divider = 1.0f;
+    if (divider > 255.0f) divider = 255.0f; // Hardware limit for 8-bit integer component
+
+    uint32_t wrap = (uint32_t)((float)sys_clk / (divider * step_freq)) - 1;
+    if (wrap > 65535) wrap = 65535;
+
+    // Apply hardware registers
+    pwm_set_clkdiv(slice_num, divider);
+    pwm_set_wrap(slice_num, (uint16_t)wrap);
+    
+    // 50% duty cycle provides clean square wave pulses for the TMC2209
+    pwm_set_chan_level(slice_num, chan, (uint16_t)(wrap / 2));
+    pwm_set_enabled(slice_num, true);
+}

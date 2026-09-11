@@ -3,46 +3,55 @@
 #include <cmath>
 #include <algorithm>
 
-class Controller {
+class FullController {
 
     public:
 
-    double R_wheel = 0.065/2; // [m]
-    double mr = 0.18; // [kg] - mass of rotation system
-    double Jr = 0.000025; // [kg*m^2] - moment of inertia of rotation system
-    double Fr = 0.2; // [N/(rad*s)] - friction of rotation system
-    double L = 0.0412; // [m] - Length measured from the wheel axis and mass center
-    double mb = 0.3; // [kg] - mass of main body - 76(g) + PCB
-    double Jb = 0.0000996377; // [kg*m^2] - moment of inertia of main system
-    double Fb = 0.002; // [N/(rad*s)] - friction of main system
-    double g = 9.81; // [m/s^2] - gravitational acceleration
+    double mtot = 0.85;      // total mass (kg)
+    double mp = 0.3;         // Pendulum mass (kg)
+    double lp = 51.2*0.001;         // Distance from pivot to center of mass (m)
+    double l_tot = (mp/mtot)*lp; // pivot to center mass (m)
+    double I_cm_motor = (1.291*std::pow(10, 5)) * 1e-9; // each motor COM inertia
+    double I_cm_p = (1.749*std::pow(10, 5)) * 1e-9; // pendulum COM inertia
+    double I_total = 2 * I_cm_motor + (I_cm_p + mp*std::pow(lp, 2)); // total inertia around rotation point (center of motors)
+    double g = 9.81;
+    double R_wheel = 0.065/2; // (m)
 
+    double u = 0.0; // control input (rad/s^2)
+    double w = 0.0; // Control input to motors (angular velocity in rad/s)
+    double x_dot = 0.0; // Linear velocity of the robot (m/s)
+    double x = 0.0; // Position in meters
+    double integral_action_pos = 0.0; // Integral action for position control
+
+    double Controller(double theta, double theta_dot, double dt);
+    void integrate_velocity(double dt);
 
 
     private:
 
-    double p = Jb*(mb+mr) + mb*mr*(std::pow(L, 2.0)); // denominator - just for simplicity
-
+    // state-space representation of the system - [x, x_dot, theta, theta_dot], u = acceleration (rad/s^2)
     std::array<std::array<double, 4>, 4> A = {{
         {0, 1, 0, 0},
-        {0, -Fr*(Jb+mb*std::pow(L, 2.0))/p, (std::pow(mb, 2.0) * std::pow(L, 2.0) * g)/p, 0},
+        {0, 0, 0, 0},
         {0, 0, 0, 1},
-        {0, -Fr*mb*L/p, mb*g*(mb+mr)/p, 0}
+        {0, 0, (mtot*g*l_tot)/I_total, 0}
     }};
 
     std::array<std::array<double, 1>, 4> B = {{
         {0},
-        {(Jb+mb*std::pow(L, 2.0))/p},
+        {R_wheel},
         {0},
-        {mb*L/p}
+        {-(mtot*l_tot*R_wheel)/I_total}
     }};
 
-    std::array<std::array<double, 4>, 2> C = {{
+    std::array<std::array<double, 4>, 4> C = {{
         {1, 0, 0, 0},
-        {0, 0, 1, 0}
+        {0, 1, 0, 0},
+        {0, 0, 1, 0},
+        {0, 0, 0, 1}
     }};
 
-
+double K[5] = { -24.6576, -42.2849, -674.7556, -60.7790, -7.0711 }; // Controller gains (u = -K*x)
 
 };
 
@@ -64,7 +73,7 @@ class AngleController {
     // double v_deadzone = 0.0; // [V] - voltage below which the motor does not respond
     // double deadband = 0.02; // [rad] - angle range within which the controller does not act (2.86 degrees)
 
-    double Controller(double theta, double dt);
+    double Controller(double theta, double theta_dot, double dt);
 
 
     // private:
@@ -91,8 +100,8 @@ class AngleController {
 
     std::array<std::array<double, 2>, 1> C_reduce = {{ {1, 0} }};
 
-    double K[2] = { -10, -1.5 }; // Controller gains (u = -K*x)
-    double L[2] = { 35, 250 }; // Luenberger observer gains
+    double K[2] = { -603.7006, -54.3107 }; // Controller gains (u = -K*x)
+    // double L[2] = { 35, 250 }; // Luenberger observer gains
     
 };
 

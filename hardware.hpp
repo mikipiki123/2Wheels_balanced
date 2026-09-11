@@ -31,3 +31,26 @@ class IMU_sensor {
     IMU_sensor();
     bool read_sensor_fusion_x(uint64_t delta_us);
 };
+
+
+
+// GPIO Pin Definitions
+    const uint STEP_PIN = 2; // GP2 (Pico Pin 4)
+    const uint DIR_PIN  = 3; // GP3 (Pico Pin 5)
+    const uint EN_PIN   = 4; // GP4 (Pico Pin 6)
+
+    // Configuration Parameters
+    // Set to 3200 for 1/16 microstepping (200 steps * 16)
+    // Set to 1600 for 1/8 microstepping (MS1/MS2 left floating)
+    const float STEPS_PER_REV = 200.0f; // 1/16 microstepping
+    const float MICROSTEPS    = 16.0f; 
+    const float RAD_TO_FREQ   = (STEPS_PER_REV * MICROSTEPS) / (2.0f * M_PI); // Conversion factor from rad/s to step frequency (Hz)
+
+class MotorController {
+
+    public:
+    MotorController();
+    void set_motor_velocity(float rad_sec);
+
+
+};
