@@ -3,6 +3,31 @@
 #include <cmath>
 #include <algorithm>
 
+class SSController {
+    
+    public:
+    // Given parameters
+    double mtot = 0.85;      // total mass (kg)
+    double mp = 0.3;         // Pendulum mass (kg)
+    double lp = 51.2*0.001;         // Distance from pivot to center of mass (m)
+    double I_cm_motor = (1.291*std::pow(10, 5)) * 1e-9; // each motor COM inertia (kg*m^2)
+    double I_cm_p = (1.749*std::pow(10, 5)) * 1e-9; // pendulum COM inertia (kg*m^2)
+    double g = 9.81;
+    double R_wheel = 0.065/2; // wheel radius (m)
+
+    // Calculated parameters
+    double l_tot = (mp/mtot)*lp; // pivot to COM (center of mass) (m)
+    double I_total = 2 * I_cm_motor + (I_cm_p + mp*std::pow(lp, 2)); // total inertia around rotation point (center of motors)
+    double u = 0.0; // control input (rad/s^2)
+    double w = 0.0; // Control input to motors (angular velocity in rad/s) - integrated acceleration
+
+    // virtual double Controller(double theta, double theta_dot, double dt) = 0; // Pure virtual function for controller implementation
+
+
+
+
+};
+
 class FullController {
 
     public:
@@ -10,18 +35,21 @@ class FullController {
     double mtot = 0.85;      // total mass (kg)
     double mp = 0.3;         // Pendulum mass (kg)
     double lp = 51.2*0.001;         // Distance from pivot to center of mass (m)
-    double l_tot = (mp/mtot)*lp; // pivot to center mass (m)
-    double I_cm_motor = (1.291*std::pow(10, 5)) * 1e-9; // each motor COM inertia
-    double I_cm_p = (1.749*std::pow(10, 5)) * 1e-9; // pendulum COM inertia
+    double l_tot = (mp/mtot)*lp; // pivot to COM (center of mass) (m)
+    double I_cm_motor = (1.291*std::pow(10, 5)) * 1e-9; // each motor COM inertia (kg*m^2)
+    double I_cm_p = (1.749*std::pow(10, 5)) * 1e-9; // pendulum COM inertia (kg*m^2)
     double I_total = 2 * I_cm_motor + (I_cm_p + mp*std::pow(lp, 2)); // total inertia around rotation point (center of motors)
     double g = 9.81;
-    double R_wheel = 0.065/2; // (m)
+    double R_wheel = 0.065/2; // wheel radius (m)
 
     double u = 0.0; // control input (rad/s^2)
     double w = 0.0; // Control input to motors (angular velocity in rad/s)
     double x_dot = 0.0; // Linear velocity of the robot (m/s)
-    double x = 0.0; // Position in meters
+    double x = -0.1; // Position in meters
     double integral_action_pos = 0.0; // Integral action for position control
+
+    //low pass filter parameters
+    double x_dot_prev = 0.0; // Previous linear velocity for low-pass filter
 
     double Controller(double theta, double theta_dot, double dt);
     void integrate_velocity(double dt);
@@ -51,7 +79,9 @@ class FullController {
         {0, 0, 0, 1}
     }};
 
-double K[5] = { -24.6576, -42.2849, -674.7556, -60.7790, -7.0711 }; // Controller gains (u = -K*x)
+// double K[5] = { -56.5440, -67.0199, -715.3253, -40.6780, -50.3607 }; // Controller gains (u = -K*x) - good gains
+// double K[5] = { -56.5440, -67.0199, -715.3253, -40.6780, -50.3607 }; // Controller gains (u = -K*x)
+double K[5] = { -53.5090, -62.3163, -677.2072, -61.7753, -80.7566 };
 
 };
 
@@ -60,18 +90,6 @@ class AngleController {
 
     public:
 
-    // const double R_wheel = 0.0325; // [m]
-    // const double mw = 0.039;          // Mass of ONE wheel [kg]
-    const double Length = 0.1; // [m] - Length measured from the wheel axis and mass center
-    const double mb = 0.5; // [kg] - mass of main body - 76(g) + PCB
-    const double g = 9.81; // [m/s^2] - gravitational acceleration
-    const double Jb = 0.005; // [kg*m^2] - moment of inertia of main system
-    const double b_fric = 0.001; // [N*m*s] - Viscous friction/damping coefficient at the motor shaft
-
-
-    // double v_max = 5.0; // [V] - maximum voltage applied to the motor
-    // double v_deadzone = 0.0; // [V] - voltage below which the motor does not respond
-    // double deadband = 0.02; // [rad] - angle range within which the controller does not act (2.86 degrees)
 
     double Controller(double theta, double theta_dot, double dt);
 

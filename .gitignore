@@ -5,3 +5,17 @@ build/
 cmake-build-*/
 
 pico_sdk_import.cmake
+telemetry_log_20260915_104701.csv
+telemetry_log_20260915_124833.csv
+telemetry_log_20260915_125219.csv
+telemetry_log_20260915_125306.csv
+telemetry_log_20260915_125408.csv
+telemetry_log_20260915_131052.csv
+telemetry_log_20260915_131328.csv
+telemetry_log_20260915_131516.csv
+telemetry_log_20260916_121531.csv
+telemetry_log_20260916_121956.csv
+telemetry_log_20260916_122101.csv
+telemetry_log_20260916_122536.csv
+telemetry_log_20260916_125229.csv
+dsp_gyro_spectrum.npz

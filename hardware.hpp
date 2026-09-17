@@ -19,9 +19,15 @@
 constexpr float ACCEL_SCALE = 16384.0f;                     // LSB / g
 constexpr float GYRO_SCALE_RAD = 131.0f * (180.0f / M_PI);   // LSB / (rad/s)
 constexpr float ALPHA = 0.98f;                               // Complementary filter weight
+#define MOTORS_RAD_S_MAX 100.0f // Maximum motor speed in rad/s
 
 
 class IMU_sensor {
+
+    private:
+    double gyro_bias_y = 0.0f; // Gyroscope bias for Y-axis (pitch rate)
+    void calibrate_gyro();
+
 
     public:
 
