@@ -43,9 +43,6 @@ int main() {
 
     absolute_time_t next = get_absolute_time();
 
-    // double w = 0.0; // Control input (angular velocity in rad/s)
-    // double x_dot
-    // double x = 0.0; // Position in meters
 
     while (true) {
     
