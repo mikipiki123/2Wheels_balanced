@@ -5,7 +5,7 @@ A self-balancing robot modeled using a linearized state-space representation and
 ---
 ## Robot in action
 
-[▶️ Watch the robot in action](images/robot_in_action.MOV)
+https://github.com/user-attachments/assets/70e26cd5-e973-4f93-8034-186bfde12b96
 
 ---
 ## 📌 Features
