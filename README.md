@@ -18,7 +18,7 @@ https://github.com/user-attachments/assets/70e26cd5-e973-4f93-8034-186bfde12b96
 
 
 * **Real-Time plot:** Displays states of the system in real time and records to signal_records
-* **Vibration analysis:** dsp.py provides a signal spectral analysis (FFT) of chosen state. I added a plot of filtered signal by 1st-order IIR with cutoff on frequency 10 (Hz), that also implemented on the IMU gyro output on hardware.cpp
+* **Vibration analysis:** dsp.py provides a signal spectral analysis (FFT) of chosen state. I added a plot of filtered signal by 1st-order IIR with cutoff ($f_c = 10\text{ Hz}$), that also implemented on the IMU gyro output on (`hardware.cpp`)
 
 ---
 
