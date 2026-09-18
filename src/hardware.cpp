@@ -1,9 +1,31 @@
 #include "hardware.hpp"
 
+void IMU_sensor::calibrate_gyro() {
+    uint8_t reg = 0x45; // GYRO_YOUT_H register (buffer[10-11] in your burst read)
+    uint8_t buffer[2];
+    int32_t sum = 0;
+
+    for (uint16_t i = 0; i < 500; i++) {
+        // Read 2 bytes starting at 0x45 (Gyro Y High/Low)
+        i2c_write_blocking(I2C_PORT, IMU_ADDR, &reg, 1, true);
+        i2c_read_blocking(I2C_PORT, IMU_ADDR, buffer, 2, false);
+
+        int16_t raw_gyro_y = (int16_t)((buffer[0] << 8) | buffer[1]);
+        sum += raw_gyro_y;
+
+        sleep_ms(2); // 500 samples @ 2ms = 1 second calibration
+    }
+
+    // Compute average raw LSB offset
+    this->gyro_bias_y = (float)sum / (float)500.0f;
+}
+
 
 IMU_sensor::IMU_sensor() { //initialize the IMU sensor object
 
     i2c_init(I2C_PORT, 400 * 1000); // 400 kHz fast mode
+    // gpio_init(I2C_SDA);
+    // gpio_init(I2C_SCL);
     gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
     gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
     gpio_pull_up(I2C_SDA);
@@ -13,7 +35,10 @@ IMU_sensor::IMU_sensor() { //initialize the IMU sensor object
     uint8_t wake_cmd[] = {0x6B, 0x00};
     i2c_write_blocking(I2C_PORT, IMU_ADDR, wake_cmd, 2, false);
     
+    calibrate_gyro();
 }
+
+
 
 bool IMU_sensor::read_sensor_fusion_x(uint64_t delta_us) {
     uint8_t reg = 0x3B; // ACCEL_XOUT_H register start
@@ -35,7 +60,12 @@ bool IMU_sensor::read_sensor_fusion_x(uint64_t delta_us) {
     // Convert to physical units
     float ax = (float)raw_ax / ACCEL_SCALE;
     float az = (float)raw_az / ACCEL_SCALE;
-    float gyro_pitch_rad = (float)raw_gyro_pitch / GYRO_SCALE_RAD;
+    float gyro_pitch_rad = (float)(raw_gyro_pitch - gyro_bias_y) / GYRO_SCALE_RAD;
+
+    // Fast 1st-Order Low-Pass Filter at 8 Hz (100 Hz sample rate)
+    static float gyro_filtered = 0.0f;
+    float alpha_gyro = 0.335f;
+    gyro_filtered = alpha_gyro * gyro_pitch_rad + (1.0f - alpha_gyro) * gyro_filtered;
 
     // Calculate raw angle using X and Z axes with corrected mounting orientation
     float accel_angle = -std::atan2(ax, az);
@@ -44,10 +74,10 @@ bool IMU_sensor::read_sensor_fusion_x(uint64_t delta_us) {
     static float angle = 0.0f;
     float dt = (float)delta_us / 1000000.0f;
 
-    angle = ALPHA * (angle + gyro_pitch_rad * dt) + (1.0f - ALPHA) * accel_angle;
+    angle = ALPHA * (angle + gyro_filtered * dt) + (1.0f - ALPHA) * accel_angle;
 
     this->angle_x = angle;
-    this->angular_velocity_x = gyro_pitch_rad;
+    this->angular_velocity_x = gyro_filtered;
 
     return true;
 }
@@ -75,7 +105,7 @@ void MotorController::set_motor_velocity(float rad_sec) {
     uint chan = pwm_gpio_to_channel(STEP_PIN);
 
     // Stop output if requested speed is near zero
-    if (std::abs(rad_sec) < 0.001f || std::abs(rad_sec) > 10.0f) { // Safety limit to prevent excessive speed
+    if (std::abs(rad_sec) < 0.001f || std::abs(rad_sec) > MOTORS_RAD_S_MAX) { // Safety limit to prevent excessive speed
         pwm_set_enabled(slice_num, false);
         return;
     }
