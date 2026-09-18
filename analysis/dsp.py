@@ -2,13 +2,21 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.fft import fft, fftfreq
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+DATA_DIR = PROJECT_ROOT / "signal_records"
 
 # ==========================================
 # 1. Load CSV Telemetry Data
 # ==========================================
-csv_filename = "telemetry_log_20260915_104701.csv" # before filtering
-# csv_filename = "telemetry_log_20260915_124833.csv" # after filtering
-# csv_filename = "telemetry_log_20260915_131052.csv"  # after filtering
+#Examle CSV filenames:
+csv_filename = f"{DATA_DIR}/telemetry_log_20260915_104701.csv" # before filtering
+# csv_filename = DATA_DIR/"telemetry_log_20260915_124833.csv" # after filtering
+
+# Your own CSV file can be specified here:
+# csv_filename = DATA_DIR/"WRITE_YOUR_FILENAME_HERE.csv"  # test
 
 try:
     df = pd.read_csv(csv_filename)

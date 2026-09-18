@@ -36,9 +36,9 @@ pico_sdk_init()
 # Add executable. Default name is the project name, version 0.1
 
 add_executable(2Wheels_balanced
-    main.cpp
-    controller.cpp
-    hardware.cpp
+    src/main.cpp
+    src/controller.cpp
+    src/hardware.cpp
  )
 
 pico_set_program_name(2Wheels_balanced "2Wheels_balanced")
@@ -60,7 +60,7 @@ target_link_libraries(2Wheels_balanced
 
 # Add the standard include files to the build
 target_include_directories(2Wheels_balanced PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}
+        ${CMAKE_CURRENT_LIST_DIR}/include
 )
 
 pico_add_extra_outputs(2Wheels_balanced)

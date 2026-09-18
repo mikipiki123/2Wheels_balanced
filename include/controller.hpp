@@ -23,9 +23,6 @@ class SSController {
 
     // virtual double Controller(double theta, double theta_dot, double dt) = 0; // Pure virtual function for controller implementation
 
-
-
-
 };
 
 class FullController : public SSController {
@@ -42,29 +39,31 @@ class FullController : public SSController {
     double Controller(double theta, double theta_dot, double dt);
     void integrate_velocity(double dt);
 
-
     private:
 
-    // state-space representation of the system - [x, x_dot, theta, theta_dot], u = acceleration (rad/s^2)
-    std::array<std::array<double, 4>, 4> A = {{
-        {0, 1, 0, 0},
-        {0, 0, 0, 0},
-        {0, 0, 0, 1},
-        {0, 0, (mtot*g*l_tot)/I_total, 0}
+    // state-space representation of the system - [x, x_dot, theta, theta_dot], u = acceleration (rad/s^2) //todo - add integral action state!!!!!
+    std::array<std::array<double, 5>, 5> A = {{
+        {0, 1, 0, 0, 0},
+        {0, 0, 0, 0, 0},
+        {0, 0, 0, 1, 0},
+        {0, 0, (mtot*g*l_tot)/I_total, 0, 0},
+        {1, 0, 0, 0, 0}
     }};
 
-    std::array<std::array<double, 1>, 4> B = {{
+    std::array<std::array<double, 1>, 5> B = {{
         {0},
         {R_wheel},
         {0},
-        {-(mtot*l_tot*R_wheel)/I_total}
+        {-(mtot*l_tot*R_wheel)/I_total},
+        {0}
     }};
 
-    std::array<std::array<double, 4>, 4> C = {{
-        {1, 0, 0, 0},
-        {0, 1, 0, 0},
-        {0, 0, 1, 0},
-        {0, 0, 0, 1}
+    std::array<std::array<double, 5>, 5> C = {{
+        {1, 0, 0, 0, 0},
+        {0, 1, 0, 0, 0},
+        {0, 0, 1, 0, 0},
+        {0, 0, 0, 1, 0},
+        {0, 0, 0, 0, 1}
     }};
 
 // double K[5] = { -56.5440, -67.0199, -715.3253, -40.6780, -50.3607 }; // Controller gains (u = -K*x) - good gains

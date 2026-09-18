@@ -32,7 +32,15 @@ except Exception as e:
     exit()
 
 # --- Initialize CSV Logging ---
-csv_filename = f"telemetry_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DATA_DIR = PROJECT_ROOT / "signal_records"
+
+if not DATA_DIR.exists():
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+csv_filename = f"{DATA_DIR}/telemetry_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
 csv_file = open(csv_filename, mode='w', newline='')
 csv_writer = csv.writer(csv_file)
 # Write header row
