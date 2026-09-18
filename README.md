@@ -32,12 +32,35 @@ $$\mathbf{x} = \begin{bmatrix} x & \dot{x} & \theta & \dot{\theta} & x_{\text{in
 Where $x_{\text{int}} = \int (x - x_{\text{ref}}) \, dt$.
 
 ### State-Space Representation
-$$\dot{\mathbf{x}} = \mathbf{A}\mathbf{x} + \mathbf{B}u$$
-$$u = -\mathbf{K}\mathbf{x}$$
 
-$$\mathbf{A} = \begin{bmatrix}  0 & 1 & 0 & 0 & 0 \\  0 & 0 & 0 & 0 & 0 \\  0 & 0 & 0 & 1 & 0 \\  0 & 0 & \frac{M_{\text{tot}} g l_{\text{tot}}}{I_{\text{axle}}} & 0 & 0 \\  1 & 0 & 0 & 0 & 0  \end{bmatrix}, \quad  \mathbf{B} = \begin{bmatrix}  0 \\  R_{\text{wheel}} \\  0 \\  -\frac{M_{\text{tot}} l_{\text{tot}} R_{\text{wheel}}}{I_{\text{axle}}} \\  0  \end{bmatrix}$$
+The system uses commanded motor angular acceleration as the control input ($u = \dot{\omega}_{\text{wheel}}$):
 
-* **Note:** 2D States is a reduced representation that uses the state vector: $\mathbf{x} = \begin{bmatrix} \theta & \dot{\theta} \end{bmatrix}^T$
+$$
+\dot{\mathbf{x}} = \mathbf{A}\mathbf{x} + \mathbf{B}u
+$$
+
+$$
+u = -\mathbf{K}\mathbf{x}
+$$
+
+$$
+\mathbf{A} = \begin{bmatrix} 
+0 & 1 & 0 & 0 & 0 \\ 
+0 & 0 & 0 & 0 & 0 \\ 
+0 & 0 & 0 & 1 & 0 \\ 
+0 & 0 & \frac{M_{\text{tot}} g l_{\text{tot}}}{I_{\text{axle}}} & 0 & 0 \\ 
+1 & 0 & 0 & 0 & 0 
+\end{bmatrix}, \quad 
+\mathbf{B} = \begin{bmatrix} 
+0 \\ 
+R_{\text{wheel}} \\ 
+0 \\ 
+-\frac{M_{\text{tot}} l_{\text{tot}} R_{\text{wheel}}}{I_{\text{axle}}} \\ 
+0 
+\end{bmatrix}
+$$
+
+* **Note:** 2D States is a reduced representation using the state vector: $\mathbf{x} = [\theta, \dot{\theta}]^T$.
 
 ---
 
