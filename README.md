@@ -68,7 +68,7 @@ R_{\text{wheel}} \\
 \mathbf{R} = 1
 $$
 
-* **Note:** 2D States is a reduced representation using the state vector: $\mathbf{x} = [\theta , \dot{\theta}]^T$.
+* **Note:** 2D States is a reduced representation using the state vector: $\mathbf{x} = [\theta  \dot{\theta}]^T$.
 
 ---
 
