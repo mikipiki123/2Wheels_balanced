@@ -1,4 +1,4 @@
-<!-- # 2 Wheels self balancing robot
+# 2 Wheels self balancing robot
 
 A self-balancing robot modeled using a linearized state-space representation and implemented on a Raspberry Pi Pico with an IMU sensor and NEMA 17 stepper motors. The project includes the physical system modeling and core real-time control algorithm, along with Python-based tools for experimental data analysis, signal processing, and real-time visualization of system states and control signals.
 
