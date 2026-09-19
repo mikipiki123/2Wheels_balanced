@@ -5,3 +5,6 @@ build/
 cmake-build-*/
 
 pico_sdk_import.cmake
+dsp_gyro_spectrum.npz
+
+signal_records/telemetry_log_20260918_165727.csv
