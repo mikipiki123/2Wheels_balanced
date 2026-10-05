@@ -3,7 +3,7 @@
 #include <cmath>
 #include <algorithm>
 
-class SSController {
+class SSController { //state-space controller base class
     
     public:
     // Given parameters
@@ -36,7 +36,7 @@ class FullController : public SSController {
     //low pass filter parameters
     double x_dot_prev = 0.0; // Previous linear velocity for low-pass filter
 
-    double Controller(double theta, double theta_dot, double dt);
+    double Controller(double theta, double theta_dot, double dt, double target_x);
     void integrate_velocity(double dt);
 
     private:

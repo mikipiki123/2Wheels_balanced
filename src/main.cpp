@@ -58,7 +58,7 @@ int main() {
             imu.read_sensor_fusion_x(PERIOD_MS * 1000); // Read sensor fusion data from IMU
             // imu.angle_x -= theta_bias; // Remove bias from calibration
 
-            double u = fullController.Controller(imu.angle_x, imu.angular_velocity_x, PERIOD_MS/1000.0); // dt = 0.005 s (5 ms) = 200 Hz
+            double u = fullController.Controller(imu.angle_x, imu.angular_velocity_x, PERIOD_MS/1000.0, 0.1); // dt = 0.005 s (5 ms) = 200 Hz, target_x = 0.1 (m)
 
             // double u = angleController.Controller(imu.angle_x, imu.angular_velocity_x, PERIOD_MS/1000.0); // dt = 0.01 s (10 ms) = 100 Hz
         
@@ -81,7 +81,6 @@ int main() {
             //     angleController.w); // for graph RTplot.py
 
 
-            
             
             motorController.set_motor_velocity(fullController.w, 2); // Apply control input to motors
             motorController.set_motor_velocity(-fullController.w, 1); // Apply control input to motors
