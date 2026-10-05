@@ -85,22 +85,37 @@ bool IMU_sensor::read_sensor_fusion_x(uint64_t delta_us) {
 
 MotorController::MotorController() {
     // Initialize the motor controller
-    gpio_init(STEP_PIN);
-    gpio_set_dir(STEP_PIN, GPIO_OUT);
+    gpio_init(STEP_PIN1);
+    gpio_set_dir(STEP_PIN1, GPIO_OUT);
 
-    gpio_init(DIR_PIN);
-    gpio_set_dir(DIR_PIN, GPIO_OUT);
+    gpio_init(DIR_PIN1);
+    gpio_set_dir(DIR_PIN1, GPIO_OUT);
 
-    gpio_init(EN_PIN);
-    gpio_set_dir(EN_PIN, GPIO_OUT);
-    // Enable TMC2209 (Active LOW: LOW = Driver ON, HIGH = Motors Free-Wheeling)
-    gpio_put(EN_PIN, 0);
+    gpio_init(STEP_PIN2);
+    gpio_set_dir(STEP_PIN2, GPIO_OUT);
+    gpio_init(DIR_PIN2);
+    gpio_set_dir(DIR_PIN2, GPIO_OUT);
+
+    // gpio_init(EN_PIN);
+    // gpio_set_dir(EN_PIN, GPIO_OUT);
+    // // Enable TMC2209 (Active LOW: LOW = Driver ON, HIGH = Motors Free-Wheeling)
+    // gpio_put(EN_PIN, 0);
     // Setup STEP Pins as PWM function outputs
-    gpio_set_function(STEP_PIN, GPIO_FUNC_PWM);
-    gpio_set_function(STEP_PIN, GPIO_FUNC_PWM);
+    gpio_set_function(STEP_PIN2, GPIO_FUNC_PWM);
+    gpio_set_function(STEP_PIN1, GPIO_FUNC_PWM);
 }
 
-void MotorController::set_motor_velocity(float rad_sec) {
+void MotorController::set_motor_velocity(float rad_sec, int motor_id) {
+
+    uint STEP_PIN, DIR_PIN;
+    if (motor_id == 1) {
+        STEP_PIN = STEP_PIN1;
+        DIR_PIN = DIR_PIN1;
+    } else if (motor_id == 2) {
+        STEP_PIN = STEP_PIN2;
+        DIR_PIN = DIR_PIN2;
+    }
+
     uint slice_num = pwm_gpio_to_slice_num(STEP_PIN);
     uint chan = pwm_gpio_to_channel(STEP_PIN);
 

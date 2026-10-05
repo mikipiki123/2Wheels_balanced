@@ -30,7 +30,7 @@ class FullController : public SSController {
     public:
 
     double x_dot = 0.0; // Linear velocity of the robot (m/s)
-    double x = -0.1; // Position in meters
+    double x = 0.0; // Position in meters
     double integral_action_pos = 0.0; // Integral action for position control
 
     //low pass filter parameters
@@ -67,7 +67,8 @@ class FullController : public SSController {
     }};
 
 // double K[5] = { -56.5440, -67.0199, -715.3253, -40.6780, -50.3607 }; // Controller gains (u = -K*x) - good gains
-double K[5] = { -53.5090, -62.3163, -677.2072, -61.7753, -80.7566 };
+double K[5] = { -53.5090, -62.3163, -400.2072, -30.7753, -80.7566 };
+// double K[5] = { -61.4026, -79.8339, -872.7474, -174.0162, -22.3607 }; // Controller gains
 
 };
 

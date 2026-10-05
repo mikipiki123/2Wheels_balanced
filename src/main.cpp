@@ -35,7 +35,7 @@ int main() {
     printf("Calibrating IMU...\n");
     printf("--------------------------------------------\n");
 
-    sleep_ms(2000); // Wait for 2 seconds to allow the IMU to stabilize
+    sleep_ms(5000); // Wait for 5 seconds to allow the IMU to stabilize
 
     
     // AngleController angleController;
@@ -45,9 +45,11 @@ int main() {
 
 
     while (true) {
-    
+        
+
         // schedule next execution time
         next = delayed_by_us(next, PERIOD_MS * 1000);
+
         
         if (true) { // imu_read_accel(accel)) {
 
@@ -58,9 +60,12 @@ int main() {
 
             double u = fullController.Controller(imu.angle_x, imu.angular_velocity_x, PERIOD_MS/1000.0); // dt = 0.005 s (5 ms) = 200 Hz
 
+            // double u = angleController.Controller(imu.angle_x, imu.angular_velocity_x, PERIOD_MS/1000.0); // dt = 0.01 s (10 ms) = 100 Hz
+        
             // fullController.w = fullController.w*0.98 + u*(PERIOD_MS/1000.0); // Integrate control input to get angular velocity command, with Leaky Integrator - 0.98
             // without leaky integrator:
             fullController.w += u*(PERIOD_MS/1000.0); // Integrate control input to get angular velocity command
+            // angleController.w += u*(PERIOD_MS/1000.0); // Integrate control input to get angular velocity command
 
             printf("%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n",
                 fullController.x, 
@@ -70,11 +75,21 @@ int main() {
                 fullController.integral_action_pos, 
                 fullController.w); // for graph RTplot.py
 
-            motorController.set_motor_velocity(fullController.w); // Apply control input to motors
+            // printf("%.4f,%.4f,%.4f\n",
+            //     imu.angle_x, 
+            //     imu.angular_velocity_x, 
+            //     angleController.w); // for graph RTplot.py
+
+
+            
+            
+            motorController.set_motor_velocity(fullController.w, 2); // Apply control input to motors
+            motorController.set_motor_velocity(-fullController.w, 1); // Apply control input to motors
+            
 
             auto end = std::chrono::high_resolution_clock::now();
             double elapsed_ms = std::chrono::duration<double, std::milli>(end - start).count();
-            // std::cout << "Execution time: " << elapsed_ms << " ms" << std::endl; // Ensure elapsed_ms is consistently <= 10.0 ms!
+            std::cout << "Execution time: " << elapsed_ms << " ms" << std::endl; // Ensure elapsed_ms is consistently <= 10.0 ms!
 
         } else {
             printf("Read failed! I2C bus error.\n");
@@ -82,6 +97,7 @@ int main() {
         
         // sleep until the exact next time
         sleep_until(next);
+
 
     }
 

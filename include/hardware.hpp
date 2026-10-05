@@ -40,10 +40,12 @@ class IMU_sensor {
 
 
 
-// GPIO Pin Definitions
-    const uint STEP_PIN = 2; // GP2 (Pico Pin 4)
-    const uint DIR_PIN  = 3; // GP3 (Pico Pin 5)
-    const uint EN_PIN   = 4; // GP4 (Pico Pin 6)
+// GPIO Pin Definitions - //todo 0 different DIR,STEP for each motor
+// Motor 1 - STEP1 = 2, DIR1 = 3. Motor 2 - STEP2 = 8, DIR2 = 5. **** 6 is busy by IMU
+    const uint STEP_PIN1 = 2; // GP2 (Pico Pin 4) //changed because of PCB
+    const uint DIR_PIN1  = 3; // GP3 (Pico Pin 5)
+    const uint STEP_PIN2 = 8; // GP8 (Pico Pin 11)
+    const uint DIR_PIN2  = 9; // GP9 (Pico Pin 12)
 
     // Configuration Parameters
     // Set to 3200 for 1/16 microstepping (200 steps * 16)
@@ -56,7 +58,7 @@ class MotorController {
 
     public:
     MotorController();
-    void set_motor_velocity(float rad_sec);
+    void set_motor_velocity(float rad_sec, int motor_id); // motor_id: 1 for Motor 1, 2 for Motor 2
 
 
 };
