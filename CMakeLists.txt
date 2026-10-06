@@ -6,9 +6,6 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Initialise pico_sdk from installed location
-# (note this can come from environment, CMake cache etc)
-
 # == DO NOT EDIT THE FOLLOWING LINES for the Raspberry Pi Pico VS Code Extension to work ==
 if(WIN32)
     set(USERHOME $ENV{USERPROFILE})
@@ -33,35 +30,51 @@ project(2Wheels_balanced C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-# Add executable. Default name is the project name, version 0.1
+# 1. Create freertos_config INTERFACE target
+add_library(freertos_config INTERFACE)
 
+# Syntax fix: 'INTERFACE' must come before 'SYSTEM'
+target_include_directories(freertos_config BEFORE INTERFACE SYSTEM
+    ${CMAKE_CURRENT_SOURCE_DIR}/include # Directory containing FreeRTOSConfig.h
+)
+
+target_compile_definitions(freertos_config INTERFACE
+    projCOVERAGE_TEST=0
+)
+
+# 2. Set FreeRTOS Kernel Path and Import RP2040 Port Helper
+set(FREERTOS_KERNEL_PATH ${CMAKE_CURRENT_LIST_DIR}/FreeRTOS-Kernel)
+include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake)
+
+# 3. Add executable target
 add_executable(2Wheels_balanced
     src/main.cpp
     src/controller.cpp
     src/hardware.cpp
- )
+)
 
 pico_set_program_name(2Wheels_balanced "2Wheels_balanced")
 pico_set_program_version(2Wheels_balanced "0.1")
 
-# Modify the below lines to enable/disable output over UART/USB
+# Enable stdio output over UART/USB
 pico_enable_stdio_uart(2Wheels_balanced 1)
 pico_enable_stdio_usb(2Wheels_balanced 1)
 
-# Add the standard library to the build
-target_link_libraries(2Wheels_balanced
-        pico_stdlib
-        hardware_pwm
-        hardware_i2c
-        hardware_gpio
-        hardware_clocks
-        )
+# 4. Link Libraries
+target_link_libraries(2Wheels_balanced PRIVATE
+    pico_stdlib
+    hardware_pwm
+    hardware_i2c
+    hardware_gpio
+    hardware_clocks
 
+    freertos_config
+    FreeRTOS-Kernel-Heap4
+)
 
-# Add the standard include files to the build
-target_include_directories(2Wheels_balanced PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}/include
+# 5. Include Directories
+target_include_directories(2Wheels_balanced BEFORE PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/include
 )
 
 pico_add_extra_outputs(2Wheels_balanced)
-
