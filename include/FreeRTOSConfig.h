@@ -57,6 +57,7 @@
 #define INCLUDE_vTaskDelay                      1
 #define INCLUDE_xTaskGetSchedulerState          1
 #define INCLUDE_xTaskGetCurrentTaskHandle       1
+#define INCLUDE_xSemaphoreGetMutexHolder        1
 
 /* Interrupt Priority Settings for ARM Cortex-M0+ */
 #define configKERNEL_INTERRUPT_PRIORITY         255

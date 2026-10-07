@@ -31,7 +31,7 @@ double FullController::Controller(double theta, double theta_dot, double dt, dou
         this->integral_action_pos *= 0.96; // Apply leaky integrator to prevent windup
     }
 
-    this->integral_action_pos = std::clamp(this->integral_action_pos, -0.8, 0.8); // Clamp integral action to prevent windup
+    this->integral_action_pos = std::clamp(this->integral_action_pos, -5.0, 5.0); // Clamp integral action to prevent windup
 
     this->u = -this->K[0] * (e_x) 
               -this->K[1] * this->x_dot 
