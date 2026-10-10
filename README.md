@@ -87,12 +87,23 @@ The natural frequency of the robot is ~3-4 Hz, so considering the noise reductio
 Build and flash the firmware using the Pico SDK from root:
 ```bash
 mkdir build && cd build
-cmake ..
+cmake -DPICO_SDK_PATH=/Users/.../.pico-sdk/sdk/2.2.0 ..
 make
 cp 2Wheels_balanced.uf2 /Volumes/RPI-RP2
 ```
 
-## Future updates:
-* **Physical structure:** Raise the center of mass to increase axle rotational inertia, slowing down open-loop falling dynamics and improving control authority.
-* **Electronic scheme:** Design a dedicated PCB o eliminate wiring clutter and reducing electrical noise. Also, adding a battery to the top could prevent external disturbance from the power cable (The current system really sensitive to it).
-* **Algorithms:** Extending the robot capabilities to track references, to yaw in place, 2D space moving.
+## Update: 10/10/26
+* **Mechanical and Electrical Improvements:** Added a new mechanical structure and a custom-designed homemade PCB. The robot is now electrically stable and has improved mechanical properties. An onboard battery also makes it fully independent of an external power supply.
+
+<img src="images/2Wheels_V2.png" width="600">
+
+* **Communication:** Implemented UDP telemetry to stream real-time data to a PC using (`RTplot.py`). Added TCP communication through (`client.py`) to send commands over a separate communication channel. The robot can now receive reference commands for its absolute position along a single axis.
+
+//video - https://github.com/user-attachments/assets/70e26cd5-e973-4f93-8034-186bfde12b96
+
+* **RTOS Implementation:** Integrated FreeRTOS to improve code organization, modularity, and robustness.
+
+## Future updates
+* **Adaptive Response:** The robot currently takes the same amount of time to reach different reference positions, which can lead to aggressive behavior when tracking large reference changes. The goal is to adapt the controller’s response to the magnitude of the reference change.
+
+* **Expand to 2D Movement:** Implement yaw control to enable two-dimensional navigation. The robot will operate using radial coordinates, which will later be transformed into the XY plane by an external computer for mapping.
