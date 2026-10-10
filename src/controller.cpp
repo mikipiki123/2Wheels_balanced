@@ -1,6 +1,8 @@
 #include "controller.hpp"
 
-
+void FullController::gain_tuning_5D(double target_x) {
+    
+}
 
 void FullController::integrate_velocity(double dt) {
 
@@ -27,11 +29,11 @@ double FullController::Controller(double theta, double theta_dot, double dt, dou
 
     this->integral_action_pos += e_x * dt; // Integrate position for integral action
 
-    if (std::abs(e_x) < 0.005) { // Only integrate position when within 0.5 cm of the origin
-        this->integral_action_pos *= 0.96; // Apply leaky integrator to prevent windup
-    }
+    // if (std::abs(e_x) < 0.005) { // Only integrate position when within 0.5 cm of the origin
+    //     this->integral_action_pos *= 0.98; // Apply leaky integrator to prevent windup
+    // }
 
-    this->integral_action_pos = std::clamp(this->integral_action_pos, -5.0, 5.0); // Clamp integral action to prevent windup
+    this->integral_action_pos = std::clamp(this->integral_action_pos, -50.0, 50.0); // Clamp integral action to prevent windup
 
     this->u = -this->K[0] * (e_x) 
               -this->K[1] * this->x_dot 

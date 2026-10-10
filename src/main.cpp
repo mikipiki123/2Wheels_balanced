@@ -27,17 +27,20 @@
 #include "lwip/inet.h"
 #include "lwip/apps/mdns.h"
 
-#define WIFI_SSID "bernerm"
-#define WIFI_PASSWORD "mikipiki12"
+#define WIFI_SSID "WIFI"
+#define WIFI_PASSWORD "PASSWORD"
 #define SERVER_PORT    5000
 #define HOSTNAME    "robot" // Will resolve to robot.local
 
-#define PERIOD_MS 10 // 10 ms period for 100 Hz frequency.
+#define UDP_TELEMETRY_PORT 5001
+
+#define PERIOD_MS 5 // 5 ms period for 200 Hz frequency.
 
 
 // Task Handles
 TaskHandle_t xControlLoopTaskHandle = NULL;
 TaskHandle_t xCommandRecieveTaskHandle = NULL;
+TaskHandle_t xTelemetryTaskHandle = NULL;
 
 SemaphoreHandle_t xConfigMutex = NULL;
 
@@ -47,18 +50,100 @@ typedef struct {
     MotorController* motorController;
 } ControlLoopParams;
 
+// Packed telemetry struct (24 bytes total)
+#pragma pack(push, 1)
+typedef struct { 
+    float x;           // Wheel position (m)
+    float x_dot;       // Wheel velocity (m/s)
+    float theta;       // Tilt angle (rad)
+    float theta_dot;   // Angular velocity (rad/s)
+    float x_integral;  // Position error integral
+    float w_motor;     // Control output (rad/s^2)
+} TelemetryPacket;
+#pragma pack(pop)
+
 double x_reference = 0.0f; // Global target position for the robot
 
+void vTelemetryTask(void *pvParameters) {
+
+ControlLoopParams* params = (ControlLoopParams*)pvParameters;
+
+    // 1. Create UDP Socket
+    int udp_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (udp_sock < 0) {
+        printf("[TELEM] Socket creation failed!\n");
+        vTaskDelete(NULL);
+    }
+
+    // 2. Enable Broadcast Option
+    int broadcast_enable = 1;
+    setsockopt(udp_sock, SOL_SOCKET, SO_BROADCAST, &broadcast_enable, sizeof(broadcast_enable));
+
+    // 3. Configure Broadcast Destination Address
+    struct sockaddr_in broadcast_addr;
+    memset(&broadcast_addr, 0, sizeof(broadcast_addr));
+    broadcast_addr.sin_family = AF_INET;
+    broadcast_addr.sin_port = htons(UDP_TELEMETRY_PORT);
+    broadcast_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST); // 255.255.255.255
+
+    printf("[TELEM] UDP Broadcaster starting on port %d...\n", UDP_TELEMETRY_PORT);
+
+    TelemetryPacket packet;
+
+    for (;;) {
+        vTaskDelay(pdMS_TO_TICKS(50)); // 20 Hz (50 ms)
+
+        // Read sensor values safely
+        packet.x          = (float)params->fullController->x;
+        packet.x_dot      = (float)params->fullController->x_dot;
+        packet.theta      = (float)params->imu->angle_x;
+        packet.theta_dot  = (float)params->imu->angular_velocity_x;
+        packet.x_integral = (float)params->fullController->integral_action_pos;
+        packet.w_motor    = (float)params->fullController->w;
+
+        // Send binary telemetry struct
+        int bytes_sent = sendto(
+            udp_sock, 
+            &packet, 
+            sizeof(TelemetryPacket), 
+            0, 
+            (struct sockaddr *)&broadcast_addr, 
+            sizeof(broadcast_addr)
+        );
+
+        if (bytes_sent < 0) {
+            printf("[TELEM] sendto failed!\n");
+        }
+    }
+}
 
 void Control_Loop(void *pvParameters) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
-    const TickType_t xFrequency = pdMS_TO_TICKS(10); // Exactly 10 ms (100 Hz)
+    const TickType_t xFrequency = pdMS_TO_TICKS(PERIOD_MS); // Exactly 5 ms (200 Hz)
+
+
+    // // Profiling variables
+    // uint64_t total_exec_time_us = 0;
+    // uint64_t max_exec_time_us = 0;
+    // uint64_t min_exec_time_us = UINT64_MAX;
+    // uint32_t sample_count = 0;
+
 
     double x_ref = 0.0; // Local copy of the target position
 
     while (1) {
 
-        if (true) { // imu_read_accel(accel)) {
+        
+
+        if (true) {
+
+            vTaskDelayUntil(&xLastWakeTime, xFrequency);
+
+            // // 1. Record start timestamp
+            // absolute_time_t t_start = get_absolute_time();
+
+
+            //------------- control loop code here -------------//
 
             if (xSemaphoreTake(xConfigMutex, 0) == pdTRUE) {
                 // Read the global target position for the robot
@@ -68,28 +153,54 @@ void Control_Loop(void *pvParameters) {
 
             ControlLoopParams* params = (ControlLoopParams*)pvParameters;
             params->imu->read_sensor_fusion_x(PERIOD_MS * 1000); // Read sensor fusion data from IMU
-            // imu.angle_x -= theta_bias; // Remove bias from calibration
 
             double u = params->fullController->Controller(params->imu->angle_x, params->imu->angular_velocity_x, PERIOD_MS/1000.0, x_ref); // dt = 0.005 s (5 ms) = 200 Hz, target_x = 0.1 (m)
 
-            // double u = angleController.Controller(imu.angle_x, imu.angular_velocity_x, PERIOD_MS/1000.0); // dt = 0.01 s (10 ms) = 100 Hz
-        
-            // fullController.w = fullController.w*0.98 + u*(PERIOD_MS/1000.0); // Integrate control input to get angular velocity command, with Leaky Integrator - 0.98
-            // without leaky integrator:
             params->fullController->w += u*(PERIOD_MS/1000.0); // Integrate control input to get angular velocity command
-            // angleController.w += u*(PERIOD_MS/1000.0); // Integrate control input to get angular velocity command
 
-            // printf("%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n",
-            //     fullController.x, 
-            //     fullController.x_dot, 
-            //     imu.angle_x, 
-            //     imu.angular_velocity_x, 
-            //     fullController.integral_action_pos, 
-            //     fullController.w); // for graph RTplot.py
 
 
             params->motorController->set_motor_velocity(params->fullController->w, 2); // Apply control input to motors
             params->motorController->set_motor_velocity(-params->fullController->w, 1); // Apply control input to motors
+
+        //------------- end of control loop code -------------//
+
+        //     // 2. Record end timestamp
+        // absolute_time_t t_end = get_absolute_time();
+
+        // // 3. Compute execution time for this single iteration
+        // int64_t exec_duration_us = absolute_time_diff_us(t_start, t_end);
+
+        // // Update statistics
+        // total_exec_time_us += exec_duration_us;
+        // if ((uint64_t)exec_duration_us > max_exec_time_us) {
+        //     max_exec_time_us = exec_duration_us;
+        // }
+        // if ((uint64_t)exec_duration_us < min_exec_time_us) {
+        //     min_exec_time_us = exec_duration_us;
+        // }
+        // sample_count++;
+
+        // // 4. Print aggregated metrics every 1000 ms (200 samples)
+        // if (sample_count >= 100) {
+        //     uint64_t avg_exec_us = total_exec_time_us / sample_count;
+            
+        //     // Calculate Core 1 CPU Utilization Percentage
+        //     float core1_cpu_load = ((float)avg_exec_us / (float)10000) * 100.0f;
+
+        //     printf("[CORE 1 PROFILE] Loop Target: %d us | Exec Avg: %llu us | Min: %llu us | Max: %llu us | Core 1 CPU Load: %.2f%%\n",
+        //            10000,
+        //            avg_exec_us,
+        //            min_exec_time_us,
+        //            max_exec_time_us,
+        //            core1_cpu_load);
+
+        //     // Reset accumulation metrics
+        //     total_exec_time_us = 0;
+        //     max_exec_time_us = 0;
+        //     min_exec_time_us = UINT64_MAX;
+        //     sample_count = 0;
+        // }
             
 
         } else {
@@ -100,8 +211,8 @@ void Control_Loop(void *pvParameters) {
 
         
 
-        // F. Wait until precisely 10 ms has elapsed since last cycle execution
-        vTaskDelayUntil(&xLastWakeTime, xFrequency);
+        // // F. Wait until precisely 10 ms has elapsed since last cycle execution
+        // vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
 }
 
@@ -136,6 +247,16 @@ void vCommandRecieveTask(void *pvParameters) {
     // 4. Safe mDNS Initialization after IP is valid
     mdns_resp_init();
     mdns_resp_add_netif(netif, HOSTNAME);
+
+    xTaskCreate(
+        vTelemetryTask,
+        "TelemetryTask",
+        2048,
+        pvParameters,
+        2,
+        &xTelemetryTaskHandle
+    );
+    vTaskCoreAffinitySet(xTelemetryTaskHandle, (1 << 0)); // Pin TelemetryTask to Core 0
 
     // 5. Create Listening TCP Socket
     int listen_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
@@ -191,10 +312,7 @@ void vCommandRecieveTask(void *pvParameters) {
 
             rx_buf[bytes_received] = '\0';
 
-            
-
             std::string rx = std::string(rx_buf);
-
 
             // Strip trailing newlines (\n, \r) or spaces sent by TCP clients
             while (!rx.empty() && (rx.back() == '\r' || rx.back() == '\n' || rx.back() == ' ')) {
@@ -267,11 +385,12 @@ int main() {
         vCommandRecieveTask,
         "CommandRecieveTask",
         2048,
-        NULL,
+        &params,
         2,
         &xCommandRecieveTaskHandle
     );
     vTaskCoreAffinitySet(xCommandRecieveTaskHandle, (1 << 0)); // Pin NetworkTask to Core 0
+
 
 
     // Start the FreeRTOS Scheduler

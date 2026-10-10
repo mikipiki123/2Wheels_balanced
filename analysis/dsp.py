@@ -12,10 +12,11 @@ DATA_DIR = PROJECT_ROOT / "signal_records"
 # 1. Load CSV Telemetry Data
 # ==========================================
 #Examle CSV filenames:
-csv_filename = f"{DATA_DIR}/telemetry_log_20260915_104701.csv" # before filtering
+# csv_filename = f"{DATA_DIR}/telemetry_log_20260915_104701.csv" # before filtering
 # csv_filename = DATA_DIR/"telemetry_log_20260915_124833.csv" # after filtering
 
 # Your own CSV file can be specified here:
+csv_filename = DATA_DIR/"telemetry_log_20261010_174209.csv"
 # csv_filename = DATA_DIR/"WRITE_YOUR_FILENAME_HERE.csv"  # test
 
 try:
@@ -71,7 +72,7 @@ magnitude_control = (2.0 / np.sum(window)) * np.abs(fft_output_control[:half_N])
 # apply IIR filter to data signal - fc = 20 Hz ****************
 from scipy.signal import butter, filtfilt, lfilter, spectrogram
 order = 1
-fc = 10.0
+fc = 3.0
 b, a = butter(N=order, Wn=fc, btype='low', fs=Fs)
 # Option A: Zero-phase offline filter (No phase shift - Best for post-analysis)
 signal_filtered_offline = filtfilt(b, a, signal)

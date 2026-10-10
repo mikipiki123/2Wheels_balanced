@@ -67,9 +67,8 @@ class FullController : public SSController {
     }};
 
 // double K[5] = { -56.5440, -67.0199, -715.3253, -40.6780, -50.3607 }; // Controller gains (u = -K*x) - good gains
-double K[5] = { -53.5090, -62.3163, -400.2072, -30.7753, -20.7566 };
-// double K[5] = { -61.4026, -79.8339, -872.7474, -174.0162, -22.3607 }; // Controller gains
-
+// double K[5] = { -50.5090, -60.3163, -350.2072, -30.7753, -20.7566 };
+const double K[5] = { -30.2407f, -100.7864f, -400.2284f, -30.4034f, -6.9480f }; // Controller gains
 };
 
 
