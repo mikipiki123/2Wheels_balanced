@@ -25,14 +25,24 @@ constexpr float ALPHA = 0.98f;                               // Complementary fi
 class IMU_sensor {
 
     private:
-    double gyro_bias_y = 0.0f; // Gyroscope bias for Y-axis (pitch rate)
+    float gyro_bias_y = 0.0f; // Gyroscope bias for Y-axis (pitch rate)
+    float gyro_bias_z = 0.0f; // Gyroscope bias for Z-axis (yaw rate)
+
+    float mag_bias_x = 0.0f;
+    float mag_bias_y = 0.0f;
+    float mag_bias_z = 0.0f;
     void calibrate_gyro();
+    void init_magnetometer();
+    void calibrate_magnetometer();
 
 
     public:
 
-    float angle_x = 0.0f; // Estimated angle from sensor fusion
-    float angular_velocity_x = 0.0f; // Estimated angular velocity from sensor fusion
+    float angle_x = 0.0f;              // Pitch (rad)[cite: 5]
+    float angular_velocity_x = 0.0f;   // Pitch rate (rad/s)[cite: 5]
+    
+    float angle_z = 0.0f;              // Absolute Yaw (rad)
+    float angular_velocity_z = 0.0f;   // Yaw rate (rad/s)
 
     IMU_sensor();
     bool read_sensor_fusion_x(uint64_t delta_us);

@@ -27,8 +27,8 @@
 #include "lwip/inet.h"
 #include "lwip/apps/mdns.h"
 
-#define WIFI_SSID "WIFI"
-#define WIFI_PASSWORD "PASSWORD"
+#define WIFI_SSID "AA"
+#define WIFI_PASSWORD "miminovalico"
 #define SERVER_PORT    5000
 #define HOSTNAME    "robot" // Will resolve to robot.local
 
