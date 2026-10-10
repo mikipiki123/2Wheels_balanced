@@ -95,7 +95,7 @@ cp 2Wheels_balanced.uf2 /Volumes/RPI-RP2
 ## Update: 10/10/26
 * **Mechanical and Electrical Improvements:** Added a new mechanical structure and a custom-designed homemade PCB. The robot is now electrically stable and has improved mechanical properties. An onboard battery also makes it fully independent of an external power supply.
 
-<img src="images/2Wheels_V2.png" width="600">
+<img src="images/2Wheels_V2.jpg" width="600">
 
 * **Communication:** Implemented UDP telemetry to stream real-time data to a PC using (`RTplot.py`). Added TCP communication through (`client.py`) to send commands over a separate communication channel. The robot can now receive reference commands for its absolute position along a single axis.
 
