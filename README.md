@@ -99,7 +99,7 @@ cp 2Wheels_balanced.uf2 /Volumes/RPI-RP2
 
 * **Communication:** Implemented UDP telemetry to stream real-time data to a PC using (`RTplot.py`). Added TCP communication through (`client.py`) to send commands over a separate communication channel. The robot can now receive reference commands for its absolute position along a single axis.
 
-https://github.com/mikipiki123/2Wheels_balanced/blob/main/images/robot_V2_moving.MOV
+https://github.com/user-attachments/assets/d2a9d3fa-b054-4aef-bfdb-3f8b991ba4c6
 
 * **RTOS Implementation:** Integrated FreeRTOS to improve code organization, modularity, and robustness.
 
