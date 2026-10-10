@@ -13,10 +13,9 @@ DATA_DIR = PROJECT_ROOT / "signal_records"
 # ==========================================
 #Examle CSV filenames:
 # csv_filename = f"{DATA_DIR}/telemetry_log_20260915_104701.csv" # before filtering
-# csv_filename = DATA_DIR/"telemetry_log_20260915_124833.csv" # after filtering
+csv_filename = DATA_DIR/"telemetry_log_20260915_124833.csv" # after filtering
 
 # Your own CSV file can be specified here:
-csv_filename = DATA_DIR/"telemetry_log_20261010_174209.csv"
 # csv_filename = DATA_DIR/"WRITE_YOUR_FILENAME_HERE.csv"  # test
 
 try:
