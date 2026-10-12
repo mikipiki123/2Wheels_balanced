@@ -182,7 +182,7 @@
 #     plt.tight_layout()
 #     plt.show()
 
-
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 import control
@@ -305,13 +305,14 @@ def compute_5d_discrete_controller():
     # s_tilt_i = 2.80   # Tilt oscillation frequency
     # s_int = -0.40     # Integral action
 
-    x_ref = 0.30  # Desired position reference (m)
+    x_ref = 0.10  # Desired position reference (m)
 
-    s_pos1 = -1.10/(x_ref*0.9)    # Position convergence (~3.5 s settling time)
-    s_pos2 = -1.30/(x_ref*0.9)    # Velocity damping
-    s_tilt_r = -2.80  # Tilt damping real part
-    s_tilt_i = 2.80   # Tilt oscillation frequency
-    s_int = -0.40     # Integral action
+    s_pos1 = -2.0/(math.pow(x_ref, 4.0)+ 0.8)    # Position convergence (~3.5 s settling time)
+    s_pos2 = -2.0/(math.pow(x_ref, 0.5)+ 1.5)   # Velocity damping
+    s_tilt_r = -4.50  # Tilt damping real part
+    s_tilt_i = 4.50   # Tilt oscillation frequency
+    # s_int = -0.20/(math.pow(x_ref, 1.2)+ 3.0)   # Integral action
+    s_int = -0.20
     
     z_pos1 = np.exp(s_pos1 * Ts)
     z_pos2 = np.exp(s_pos2 * Ts)
@@ -332,7 +333,7 @@ def compute_5d_discrete_controller():
     print("// Copy-paste this array directly into C++ firmware (Core 1):")
     print(
         f"const double K[5] = {{ {K_flat[0]:.4f}f, {K_flat[1]:.4f}f, "
-        f"{K_flat[2]:.4f}f, {K_flat[3]:.4f}f, {K_flat[4]:.4f}f }}; // Controller gains\n"
+        f"{K_flat[2]:.4f}f, {K_flat[3]:.4f}f, {K_flat[4]:.4f}f }}; // Controller gains, x_ref = {x_ref:.4f} m\n"
     )
 
     # 5. Step-by-Step Discrete Simulation

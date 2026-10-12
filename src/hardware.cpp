@@ -56,40 +56,40 @@ void IMU_sensor::calibrate_gyro() {
     uint8_t buffer[6];
     int32_t sum_y = 0, sum_z = 0;
 
-    for (uint16_t i = 0; i < 500; i++) {
-        i2c_write_blocking(I2C_PORT, IMU_ADDR, &reg, 1, true);[cite: 5]
-        i2c_read_blocking(I2C_PORT, IMU_ADDR, buffer, 6, false);[cite: 5]
+    for (uint16_t i = 0; i < 250; i++) {
+        i2c_write_blocking(I2C_PORT, IMU_ADDR, &reg, 1, true);
+        i2c_read_blocking(I2C_PORT, IMU_ADDR, buffer, 6, false);
 
-        int16_t raw_gyro_y = (int16_t)((buffer[2] << 8) | buffer[3]);[cite: 5]
+        int16_t raw_gyro_y = (int16_t)((buffer[2] << 8) | buffer[3]);
         int16_t raw_gyro_z = (int16_t)((buffer[4] << 8) | buffer[5]);
 
-        sum_y += raw_gyro_y;[cite: 5]
+        sum_y += raw_gyro_y;
         sum_z += raw_gyro_z;
 
-        sleep_ms(2);[cite: 5]
+        sleep_ms(2);
     }
 
-    this->gyro_bias_y = (float)sum_y / 500.0f;[cite: 5]
+    this->gyro_bias_y = (float)sum_y / 500.0f;
     this->gyro_bias_z = (float)sum_z / 500.0f;
 }
 
 
-IMU_sensor::IMU_sensor() { //initialize the IMU sensor object
+// IMU_sensor::IMU_sensor() { //initialize the IMU sensor object
 
-    i2c_init(I2C_PORT, 400 * 1000); // 400 kHz fast mode
-    // gpio_init(I2C_SDA);
-    // gpio_init(I2C_SCL);
-    gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
-    gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
-    gpio_pull_up(I2C_SDA);
-    gpio_pull_up(I2C_SCL);
+//     i2c_init(I2C_PORT, 400 * 1000); // 400 kHz fast mode
+//     // gpio_init(I2C_SDA);
+//     // gpio_init(I2C_SCL);
+//     gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
+//     gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
+//     gpio_pull_up(I2C_SDA);
+//     gpio_pull_up(I2C_SCL);
 
-    // Reset/Wake-up register (PWR_MGMT_1 register 0x6B = 0x00)
-    uint8_t wake_cmd[] = {0x6B, 0x00};
-    i2c_write_blocking(I2C_PORT, IMU_ADDR, wake_cmd, 2, false);
+//     // Reset/Wake-up register (PWR_MGMT_1 register 0x6B = 0x00)
+//     uint8_t wake_cmd[] = {0x6B, 0x00};
+//     i2c_write_blocking(I2C_PORT, IMU_ADDR, wake_cmd, 2, false);
     
-    calibrate_gyro();
-}
+//     calibrate_gyro();
+// }
 
 IMU_sensor::IMU_sensor() {
     i2c_init(I2C_PORT, 400 * 1000);
@@ -103,7 +103,7 @@ IMU_sensor::IMU_sensor() {
 
     calibrate_gyro();
     init_magnetometer();
-    calibrate_magnetometer();
+    // calibrate_magnetometer();
 }
 
 // bool IMU_sensor::read_sensor_fusion_x(uint64_t delta_us) {
@@ -153,36 +153,36 @@ bool IMU_sensor::read_sensor_fusion_x(uint64_t delta_us) {
     uint8_t buffer[14];
 
     // 1. Read 14 bytes from MPU6050/9250[cite: 5]
-    i2c_write_blocking(I2C_PORT, IMU_ADDR, &reg, 1, true);[cite: 5]
-    i2c_read_blocking(I2C_PORT, IMU_ADDR, buffer, 14, false);[cite: 5]
+    i2c_write_blocking(I2C_PORT, IMU_ADDR, &reg, 1, true);
+    i2c_read_blocking(I2C_PORT, IMU_ADDR, buffer, 14, false);
 
-    int16_t raw_ax = (int16_t)((buffer[0] << 8) | buffer[1]);[cite: 5]
+    int16_t raw_ax = (int16_t)((buffer[0] << 8) | buffer[1]);
     int16_t raw_ay = (int16_t)((buffer[2] << 8) | buffer[3]);
-    int16_t raw_az = (int16_t)((buffer[4] << 8) | buffer[5]);[cite: 5]
+    int16_t raw_az = (int16_t)((buffer[4] << 8) | buffer[5]);
     
-    int16_t raw_gyro_pitch = (int16_t)((buffer[10] << 8) | buffer[11]);[cite: 5]
+    int16_t raw_gyro_pitch = (int16_t)((buffer[10] << 8) | buffer[11]);
     int16_t raw_gyro_yaw   = (int16_t)((buffer[12] << 8) | buffer[13]); 
 
-    float ax = (float)raw_ax / ACCEL_SCALE;[cite: 5]
+    float ax = (float)raw_ax / ACCEL_SCALE;
     float ay = (float)raw_ay / ACCEL_SCALE;
-    float az = (float)raw_az / ACCEL_SCALE;[cite: 5]
+    float az = (float)raw_az / ACCEL_SCALE;
     
-    float gyro_pitch_rad = (float)(raw_gyro_pitch - gyro_bias_y) / GYRO_SCALE_RAD;[cite: 5]
+    float gyro_pitch_rad = (float)(raw_gyro_pitch - gyro_bias_y) / GYRO_SCALE_RAD;
     float gyro_yaw_rad   = (float)(raw_gyro_yaw - gyro_bias_z) / GYRO_SCALE_RAD;
 
     // --- PITCH ESTIMATION (Existing Code) ---
-    static float gyro_filtered = 0.0f;[cite: 5]
-    float alpha_gyro = 0.335f;[cite: 5]
-    gyro_filtered = alpha_gyro * gyro_pitch_rad + (1.0f - alpha_gyro) * gyro_filtered;[cite: 5]
+    static float gyro_filtered = 0.0f;
+    float alpha_gyro = 0.335f;
+    gyro_filtered = alpha_gyro * gyro_pitch_rad + (1.0f - alpha_gyro) * gyro_filtered;
 
-    float accel_pitch = -std::atan2(ax, az);[cite: 5]
-    float dt = (float)delta_us / 1000000.0f;[cite: 5]
+    float accel_pitch = -std::atan2(ax, az);
+    float dt = (float)delta_us / 1000000.0f;
 
     static float pitch = 0.0f;
-    pitch = ALPHA * (pitch + gyro_filtered * dt) + (1.0f - ALPHA) * accel_pitch;[cite: 5]
+    pitch = ALPHA * (pitch + gyro_filtered * dt) + (1.0f - ALPHA) * accel_pitch;
 
-    this->angle_x = pitch;[cite: 5]
-    this->angular_velocity_x = gyro_filtered;[cite: 5]
+    this->angle_x = pitch;
+    this->angular_velocity_x = gyro_filtered;
 
     // --- YAW ESTIMATION WITH TILT-COMPENSATED MAGNETOMETER ---
     uint8_t mag_reg = 0x03;
