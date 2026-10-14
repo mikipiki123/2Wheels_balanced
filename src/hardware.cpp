@@ -91,20 +91,6 @@ void IMU_sensor::calibrate_gyro() {
 //     calibrate_gyro();
 // }
 
-IMU_sensor::IMU_sensor() {
-    i2c_init(I2C_PORT, 400 * 1000);
-    gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
-    gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
-    gpio_pull_up(I2C_SDA);
-    gpio_pull_up(I2C_SCL);
-
-    uint8_t wake_cmd[] = {0x6B, 0x00};
-    i2c_write_blocking(I2C_PORT, IMU_ADDR, wake_cmd, 2, false);
-
-    calibrate_gyro();
-    init_magnetometer();
-    // calibrate_magnetometer();
-}
 
 // bool IMU_sensor::read_sensor_fusion_x(uint64_t delta_us) {
 //     uint8_t reg = 0x3B; // ACCEL_XOUT_H register start
@@ -216,6 +202,23 @@ bool IMU_sensor::read_sensor_fusion_x(uint64_t delta_us) {
     this->angular_velocity_z = gyro_yaw_rad;
 
     return true;
+}
+
+IMU_sensor::IMU_sensor() {
+    i2c_init(I2C_PORT, 400 * 1000);
+    gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
+    gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
+    gpio_pull_up(I2C_SDA);
+    gpio_pull_up(I2C_SCL);
+
+    uint8_t wake_cmd[] = {0x6B, 0x00};
+    i2c_write_blocking(I2C_PORT, IMU_ADDR, wake_cmd, 2, false);
+
+    calibrate_gyro();
+    init_magnetometer();
+    // calibrate_magnetometer();
+
+    read_sensor_fusion_x(5000); // Initial read to set angles
 }
 
 

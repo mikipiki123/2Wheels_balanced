@@ -62,7 +62,12 @@ typedef struct {
 } TelemetryPacket;
 #pragma pack(pop)
 
-double x_reference = 0.0f; // Global target position for the robot
+typedef struct {
+    float x_reference = 0.0f;           // Target position (m)
+    float yaw_reference = 0.0f;         // Target yaw (rad)
+} CommandPacket;
+
+CommandPacket command_packet; // Global command packet
 
 void vTelemetryTask(void *pvParameters) {
 
@@ -101,6 +106,11 @@ ControlLoopParams* params = (ControlLoopParams*)pvParameters;
         packet.x_integral = (float)params->fullController->integral_action_pos;
         packet.w_motor    = (float)params->fullController->w;
 
+        if (xSemaphoreTake(xConfigMutex, 0) == pdTRUE) {
+            std::cout << "Psi: " << params->imu->angle_z << " rad, Psi_dot: " << params->imu->angular_velocity_z << " rad/s, Target Yaw: " << command_packet.yaw_reference << " rad" << std::endl;           
+            xSemaphoreGive(xConfigMutex);
+        }
+
         // Send binary telemetry struct
         int bytes_sent = sendto(
             udp_sock, 
@@ -128,8 +138,14 @@ void Control_Loop(void *pvParameters) {
     // uint64_t min_exec_time_us = UINT64_MAX;
     // uint32_t sample_count = 0;
 
+    ControlLoopParams* params = (ControlLoopParams*)pvParameters;
+
+
 
     double x_ref = 0.0; // Local copy of the target position
+    double yaw_ref = 0.0; // Local copy of the target yaw
+    const double yaw_initial = params->imu->angle_z; // Initial yaw angle (rad)
+    const float YAW_THRESHOLD_RAD = 0.052f;
 
     while (1) {
 
@@ -146,22 +162,37 @@ void Control_Loop(void *pvParameters) {
             //------------- control loop code here -------------//
 
             if (xSemaphoreTake(xConfigMutex, 0) == pdTRUE) {
-                // Read the global target position for the robot
-                x_ref = x_reference;
+                x_ref = command_packet.x_reference; // Safely read the target position
+                yaw_ref = command_packet.yaw_reference; // Safely read the target yaw
                 xSemaphoreGive(xConfigMutex);
             }
 
-            ControlLoopParams* params = (ControlLoopParams*)pvParameters;
+            // std::cout << "current angle: " << params->imu->angle_z << " rad, Target Yaw: " << yaw_ref << " rad" << std::endl;
+
+            
+            // ControlLoopParams* params = (ControlLoopParams*)pvParameters;
             params->imu->read_sensor_fusion_x(PERIOD_MS * 1000); // Read sensor fusion data from IMU
 
-            double u = params->fullController->Controller(params->imu->angle_x, params->imu->angular_velocity_x, PERIOD_MS/1000.0, x_ref); // dt = 0.005 s (5 ms) = 200 Hz, target_x = 0.1 (m)
+            double u_r = params->fullController->ControllerR(params->imu->angle_x, params->imu->angular_velocity_x, PERIOD_MS/1000.0, x_ref); // dt = 0.005 s (5 ms) = 200 Hz, target_x = 0.1 (m)
 
-            params->fullController->w += u*(PERIOD_MS/1000.0); // Integrate control input to get angular velocity command
+            params->fullController->w += u_r*(PERIOD_MS/1000.0); // Integrate control input to get angular velocity command
 
+            double u_yaw = 0.0;
 
+            if (params->imu->angle_z - yaw_ref > YAW_THRESHOLD_RAD) {
+                // u_yaw = params->fullController->ControllerPsi(params->imu->angle_z, params->imu->angular_velocity_z, PERIOD_MS/1000.0, yaw_ref);
+            } 
 
-            params->motorController->set_motor_velocity(params->fullController->w, 2); // Apply control input to motors
-            params->motorController->set_motor_velocity(-params->fullController->w, 1); // Apply control input to motors
+            
+
+            // double u_yaw = 0.0;
+
+            // Differential mixing
+            double w_left  = params->fullController->w + u_yaw;
+            double w_right = -(params->fullController->w - u_yaw);
+
+            params->motorController->set_motor_velocity(w_left, 2); // Apply control input to motors
+            params->motorController->set_motor_velocity(w_right, 1); // Apply control input to motors
 
         //------------- end of control loop code -------------//
 
@@ -328,10 +359,20 @@ void vCommandRecieveTask(void *pvParameters) {
                 std::string value_str = rx.substr(2); // Extract the value after "X="
                 double new_x_ref = std::stod(value_str); // Convert to double
                 if (xSemaphoreTake(xConfigMutex, portMAX_DELAY) == pdTRUE) {
-                    x_reference = new_x_ref; // Update the global target position
+                    command_packet.x_reference = new_x_ref; // Update the global target position
                     xSemaphoreGive(xConfigMutex);
 
                     std::string ack = "Target position updated to " + std::to_string(new_x_ref) + "\n";
+                    send(client_sock, ack.c_str(), ack.length(), 0);
+                }
+            } else if (rx.rfind("Yaw=", 0) == 0 || rx.rfind("yaw=", 0) == 0) { // Check if the command starts with "Y="
+                std::string value_str = rx.substr(4); // Extract the value after "Y="
+                double new_yaw_ref = std::stod(value_str); // Convert to double
+                if (xSemaphoreTake(xConfigMutex, portMAX_DELAY) == pdTRUE) {
+                    command_packet.yaw_reference = new_yaw_ref; // Update the global target yaw
+                    xSemaphoreGive(xConfigMutex);
+
+                    std::string ack = "Target yaw updated to " + std::to_string(new_yaw_ref) + "\n";
                     send(client_sock, ack.c_str(), ack.length(), 0);
                 }
             } else {
@@ -361,7 +402,6 @@ int main() {
 
     sleep_ms(5000); // Wait for 5 seconds to allow the IMU to stabilize
 
-    
     // AngleController angleController;
     FullController fullController; // Create an instance of the FullController class
 

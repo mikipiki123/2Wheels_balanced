@@ -112,12 +112,13 @@ void FullController::tune_gains(double dt, double target_x) {
     // 2. Compute s-plane poles matching control_analysis.py exactly
     double e_x = std::abs(target_x - this->target_x_prev);
 
-    double s_pos1   = -2.0 / (std::pow(e_x, 4.0) + 0.8);
-    double s_pos2   = -2.0 / (std::pow(e_x, 0.5) + 1.5);
-    double s_tilt_r = -4.50;
-    double s_tilt_i =  4.50;                     
-    // double s_int    = -0.20/(std::pow(e_x, 1.2)+ 3.0);
-    double s_int    = -0.20;                           
+    double s_pos1   = -1.0 / (std::pow(1.6 * e_x, 4.0) + 0.6) - 0.1;
+    // double s_pos1 = -2.0;
+    double s_pos2   = -1.0 / (std::pow(2.0 * e_x, -2.0) + 2) - 1.0;
+    double s_tilt_r = -3.50;
+    double s_tilt_i =  3.50;                     
+    double s_int = -1.0;
+    // double s_int    = -1.0/(std::pow(1.4 * e_x, 3.0)+ 0.83) - 0.1;//todo - setteling gains
 
     std::complex<double> s_poles[5] = {
         std::complex<double>(s_pos1, 0),
@@ -158,13 +159,41 @@ void FullController::integrate_velocity(double dt) {
         x_dot = alpha * x_dot + (1.0 - alpha) * x_dot_prev; // Apply low-pass filter to linear velocity
         x_dot_prev = x_dot; // Update previous linear velocity for next iteration
 
-    } else {
-        u = 0.0; // If angular velocity exceeds threshold, set control input to zero
+        u_r = 0.0; // If angular velocity exceeds threshold, set control input to zero
     }
-
 }
 
-double FullController::Controller(double theta, double theta_dot, double dt, double target_x) {
+double FullController::ControllerPsi(double psi, double psi_dot, double dt, double target_psi) {
+
+    double e_psi = wrap_angle_rad(psi - target_psi); // Yaw error
+
+    this->integral_action_yaw += e_psi * dt; // Integrate yaw error for integral action
+
+    if (target_psi != this->target_psi_prev) {
+        this->integral_action_yaw = 0.0; // Reset integral action when target yaw changes
+        this->target_psi_prev = target_psi;   // Update previous target yaw
+    }
+
+    this->integral_action_yaw = std::clamp(this->integral_action_yaw, -100.0, 100.0); // Clamp integral action to prevent windup
+
+
+    // // 2. Deadband Threshold (~1.5 degrees = 0.026 rad) to prevent motor chatter
+    // const float YAW_THRESHOLD_RAD = 0.026f;
+    // float position_error = 0.0f;
+
+    // if (e_psi > YAW_THRESHOLD_RAD) {
+    //     position_error = e_psi - YAW_THRESHOLD_RAD;
+    // } else if (e_psi < -YAW_THRESHOLD_RAD) {
+    //     position_error = e_psi + YAW_THRESHOLD_RAD;
+    // } else {
+    //     position_error = 0.0f; // Inside deadband: zero position correction
+    // }
+
+    return (this->K_Yaw[0] * e_psi) + (this->K_Yaw[1] * psi_dot) 
+           + (this->integral_action_yaw * this->K_Yaw[2]); // Integral action for yaw control
+}
+
+double FullController::ControllerR(double theta, double theta_dot, double dt, double target_x) {
 
     double e_x = this->x - target_x; // Position error
 
@@ -182,9 +211,9 @@ double FullController::Controller(double theta, double theta_dot, double dt, dou
         this->target_x_prev = target_x;   // Update previous target position
     }
 
-    this->integral_action_pos = std::clamp(this->integral_action_pos, -50.0, 50.0); // Clamp integral action to prevent windup
+    this->integral_action_pos = std::clamp(this->integral_action_pos, -100.0, 100.0); // Clamp integral action to prevent windup
 
-    this->u = -this->K[0] * (e_x) 
+    this->u_r = -this->K[0] * (e_x) 
               -this->K[1] * this->x_dot 
               -this->K[2] * theta 
               -this->K[3] * theta_dot
@@ -197,18 +226,18 @@ double FullController::Controller(double theta, double theta_dot, double dt, dou
     //     this->u = 0.0; // No control action within deadband
     // }
 
-    return this->u;
+    return this->u_r;
 }
 
 double AngleController::Controller(double theta, double theta_dot, double dt){
 
     // Compute the control input using state feedback
-    this->u = -this->K[0] * theta - this->K[1] * theta_dot;
+    this->u_r = -this->K[0] * theta - this->K[1] * theta_dot;
 
     // Apply deadband to control input
     if (std::abs(theta) < 0.008) { // Deadband threshold of 0.008 rad (~0.46 degrees)
-        this->u = 0.0; // No control action within deadband
+        this->u_r = 0.0; // No control action within deadband
     }
 
-    return this->u;
+    return this->u_r;
 }
