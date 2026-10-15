@@ -107,18 +107,21 @@ std::array<double, 5> compute_ackermann_5d(std::array<std::array<double, 5>, 5> 
 }
 
 void FullController::tune_gains(double dt, double target_x) {
+
+    // this->integral_action_pos = 0.0; // Reset integral action for position control
+
     double Ts = dt; // Sampling time (5 ms)
 
     // 2. Compute s-plane poles matching control_analysis.py exactly
-    double e_x = std::abs(target_x - this->target_x_prev);
+    double e_x = std::abs(target_x - this->x); // Position error
 
-    double s_pos1   = -1.0 / (std::pow(1.6 * e_x, 4.0) + 0.6) - 0.1;
+    double s_pos1   = -1.0 / (std::pow(3.0 * e_x, 2.0) + 0.8) - 0.05; //std::pow(3.0 * e_x, 2.0) + 0.8) - 0.05
     // double s_pos1 = -2.0;
-    double s_pos2   = -1.0 / (std::pow(2.0 * e_x, -2.0) + 2) - 1.0;
+    double s_pos2   = -1.0 / (std::pow(2.0 * e_x, -1.0) + 0.5) - 3.0;
     double s_tilt_r = -3.50;
     double s_tilt_i =  3.50;                     
-    double s_int = -1.0;
-    // double s_int    = -1.0/(std::pow(1.4 * e_x, 3.0)+ 0.83) - 0.1;//todo - setteling gains
+    // double s_int = -1.2;
+    double s_int    = -1.0/(std::pow(3.0 * e_x, 3.0)+ 2.5) - 0.1;//todo - setteling gains
 
     std::complex<double> s_poles[5] = {
         std::complex<double>(s_pos1, 0),
@@ -201,23 +204,32 @@ double FullController::ControllerR(double theta, double theta_dot, double dt, do
 
     this->integral_action_pos += e_x * dt; // Integrate position for integral action
 
-    if (std::abs(e_x) < 0.02 && std::abs(this->x_dot) > 0.2) { // Only apply leaky integrator when close to target
-        this->integral_action_pos *= 0.99; // Apply leaky integrator to prevent windup
-    }
+    // if (std::abs(e_x) < 0.02 && std::abs(this->x_dot) > 0.2) { // Only apply leaky integrator when close to target
+    //     this->integral_action_pos *= 0.99; // Apply leaky integrator to prevent windup
+    // }
+
 
     if (target_x != this->target_x_prev) {
         this->integral_action_pos = 0.0; // Reset integral action when target position changes
         tune_gains(dt, target_x); // Re-tune gains based on new target position
+        this->prev_target_inner = target_x_prev; // Update previous target position for settling region detection
         this->target_x_prev = target_x;   // Update previous target position
+        this->is_settling = true; // Set settling flag
+    }
+
+    if (is_in_setteling_region(e_x, 0.3 * std::abs(target_x - prev_target_inner), this->integral_action_pos, this->x_dot) && this->is_settling) {// is_settling is for not tuning each iteration in the region.
+        this->integral_action_pos = 0.0; // Reset integral action when in settling region
+        tune_gains(dt, target_x); // Re-tune gains when in settling region
+        this->is_settling = false; // Set settling flag
     }
 
     this->integral_action_pos = std::clamp(this->integral_action_pos, -100.0, 100.0); // Clamp integral action to prevent windup
 
-    this->u_r = -this->K[0] * (e_x) 
+    this->u_r = -this->K[0] * (e_x) // -0.1 - 0.5 = -0.6, 0.5 - 0.0 = 0.5
               -this->K[1] * this->x_dot 
               -this->K[2] * theta 
               -this->K[3] * theta_dot
-              -this->K[4] * this->integral_action_pos //todo - try without integral.
+              -this->K[4] * this->integral_action_pos
             ;
 
     

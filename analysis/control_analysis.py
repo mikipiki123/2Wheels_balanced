@@ -104,6 +104,15 @@ def compute_5d_discrete_controller():
         [np.zeros((1, 1))]
     ])
 
+    # ol_poles = np.linalg.eigvals(Ad_5d)
+
+    # print(f"Discrete Open-Loop Poles:\n{ol_poles}\n")
+
+    eigenvalues, eigenvectors = np.linalg.eig(Ad_5d)
+
+    print(f"Open-Loop Eigenvectors:\n{eigenvectors}\n")
+    print(f"Open-Loop Eigenvalues:\n{eigenvalues}\n")
+
     # =========================================================================
     # 4. Compute Controller Gains
     # =========================================================================
@@ -127,16 +136,14 @@ def compute_5d_discrete_controller():
     # s_tilt_i = 2.80   # Tilt oscillation frequency
     # s_int = -0.40     # Integral action
 
-    x_ref = 0.50  # Desired position reference (m)
+    x_ref = 0.10  # Desired position reference (m)
 
-    s_pos1 = -1.0/(math.pow(x_ref, 0.8)+ 0.5) - 0.05 
+    s_pos1 = -1.0/(math.pow(3.0 * x_ref, 2.0)+ 0.8) - 0.05 
       # Position convergence (~3.5 s settling time)
-    s_pos2 = -1.0/(math.pow(x_ref, 0.8)+ 1.2)   # Velocity damping
+    s_pos2 = -1.0/(math.pow(2.0 * x_ref, -1.0)+ 0.5) - 3.0   # Velocity damping
     s_tilt_r = -3.50  # Tilt damping real part
     s_tilt_i = 3.50   # Tilt oscillation frequency
-    p = math.pow(x_ref, 1.2)+ 0.3
-    s_int = -1.0/(math.pow(x_ref, -0.6)+ 0.5) - 0.8   # Integral action
-    # s_int = -01.850
+    s_int = -1.0/(math.pow(3.0 * x_ref, 3.0)+ 2.5) - 0.1   # Integral action
     
     z_pos1 = np.exp(s_pos1 * Ts)
     z_pos2 = np.exp(s_pos2 * Ts)
@@ -152,6 +159,7 @@ def compute_5d_discrete_controller():
 
     Ad_cl = Ad_5d - Bd_5d @ K_d
     cl_poles = np.linalg.eigvals(Ad_cl)
+
 
     print(f"Discrete Closed Loop Poles:\n{cl_poles}\n")
     print("// Copy-paste this array directly into C++ firmware (Core 1):")

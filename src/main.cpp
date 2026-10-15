@@ -106,10 +106,10 @@ ControlLoopParams* params = (ControlLoopParams*)pvParameters;
         packet.x_integral = (float)params->fullController->integral_action_pos;
         packet.w_motor    = (float)params->fullController->w;
 
-        if (xSemaphoreTake(xConfigMutex, 0) == pdTRUE) {
-            std::cout << "Psi: " << params->imu->angle_z << " rad, Psi_dot: " << params->imu->angular_velocity_z << " rad/s, Target Yaw: " << command_packet.yaw_reference << " rad" << std::endl;           
-            xSemaphoreGive(xConfigMutex);
-        }
+        // if (xSemaphoreTake(xConfigMutex, 0) == pdTRUE) {
+        //     std::cout << "Psi: " << params->imu->angle_z << " rad, Psi_dot: " << params->imu->angular_velocity_z << " rad/s, Target Yaw: " << command_packet.yaw_reference << " rad" << std::endl;           
+        //     xSemaphoreGive(xConfigMutex);
+        // }
 
         // Send binary telemetry struct
         int bytes_sent = sendto(
@@ -179,13 +179,10 @@ void Control_Loop(void *pvParameters) {
 
             double u_yaw = 0.0;
 
-            if (params->imu->angle_z - yaw_ref > YAW_THRESHOLD_RAD) {
-                // u_yaw = params->fullController->ControllerPsi(params->imu->angle_z, params->imu->angular_velocity_z, PERIOD_MS/1000.0, yaw_ref);
-            } 
+            // if (params->imu->angle_z - yaw_ref > YAW_THRESHOLD_RAD && params->fullController->message_settling) {
+            //     u_yaw = params->fullController->ControllerPsi(params->imu->angle_z, params->imu->angular_velocity_z, PERIOD_MS/1000.0, yaw_ref);
+            // }            
 
-            
-
-            // double u_yaw = 0.0;
 
             // Differential mixing
             double w_left  = params->fullController->w + u_yaw;
@@ -253,6 +250,8 @@ void vCommandRecieveTask(void *pvParameters) {
         printf("[NET] CYW43 Init failed!\n");
         vTaskDelete(NULL);
     }
+
+    ControlLoopParams *params = (ControlLoopParams*)pvParameters;
 
     cyw43_arch_enable_sta_mode();
     printf("[NET] Connecting to Wi-Fi: %s...\n", WIFI_SSID);
@@ -350,7 +349,7 @@ void vCommandRecieveTask(void *pvParameters) {
                 rx.pop_back();
             }
 
-            printf("[CMD] Received: %s", rx.c_str());
+            // printf("[CMD] Received: %s", rx.c_str());
 
             if (rx == "sleep"){
                 send(client_sock, "Robot go to sleep\n", 17, 0);
@@ -364,6 +363,15 @@ void vCommandRecieveTask(void *pvParameters) {
 
                     std::string ack = "Target position updated to " + std::to_string(new_x_ref) + "\n";
                     send(client_sock, ack.c_str(), ack.length(), 0);
+
+                    
+                    // while (std::abs(params->imu->angle_z - command_packet.yaw_reference) > 0.052f) {
+                    //     std::string psi_msg = "Current Yaw: " + std::to_string(params->imu->angle_z) + " rad, Target Yaw: " + std::to_string(command_packet.yaw_reference) + " rad\n";
+                    //     send(client_sock, psi_msg.c_str(), psi_msg.length(), 0);
+                    //     vTaskDelay(pdMS_TO_TICKS(50)); // Wait for 50 ms before checking again
+                    // }
+                    // std::string settling_msg = "Entering settling region.\n";
+                    // send(client_sock, settling_msg.c_str(), settling_msg.length(), 0);
                 }
             } else if (rx.rfind("Yaw=", 0) == 0 || rx.rfind("yaw=", 0) == 0) { // Check if the command starts with "Y="
                 std::string value_str = rx.substr(4); // Extract the value after "Y="
