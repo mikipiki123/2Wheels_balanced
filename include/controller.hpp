@@ -49,36 +49,36 @@ class FullController : public SSController {
 
     double target_x_prev = 0.0; // Previous target position for derivative action
     double target_psi_prev = 0.0; // Previous target yaw for derivative action
-    double prev_target_inner = 0.0; // Previous target position for settling region detection
+    double prev_target_inner = 0.1; //initial != 0.0 to avoid tolerance of zero in settling region calculation in boot
 
-    bool is_settling = false; // Flag to indicate if the system is in the settling region
-    bool message_settling = true; // Flag to allow tuning when in settling region
+    bool can_settle = false; // Flag to indicate if the system is in the settling region
+    bool message_settling_x = true; // Flag to allow tuning when in settling region
 
     double ControllerR(double theta, double theta_dot, double dt, double target_x);
     double ControllerPsi(double psi, double psi_dot, double dt, double target_psi);
     void integrate_velocity(double dt);
     void tune_gains(double dt, double target_x);
 
-    bool is_in_setteling_region_x(double e_x, double sett_tol, double integral_action_pos, double x_dot){
+    bool is_in_setteling_region_x(double e_x, double sett_tol, double x_dot){
         if (std::abs(e_x) < sett_tol && std::abs(x_dot) < 0.03) {
-            if (!message_settling) {
-                message_settling = true; // Set the flag to indicate that the system is in the settling region
+            if (!message_settling_x) {
+                message_settling_x = true; // Set the flag to indicate that the system is in the settling region
             }
             return true;
         } else {
-            message_settling = false; // Clear the flag to indicate that the system is not in the settling region
+            message_settling_x = false; // Clear the flag to indicate that the system is not in the settling region
             return false;
         }
     }
 
     bool is_in_setteling_region_yaw(double e_psi, double sett_tol, double psi_dot){
-        if (std::abs(e_psi) < 0.052f && std::abs(psi_dot) < 0.3) {
-            if (!message_settling) {
-                message_settling = true; // Set the flag to indicate that the system is in the settling region
+        if (std::abs(e_psi) < sett_tol && std::abs(psi_dot) < 0.3) {
+            if (!message_settling_x) {
+                // message_settling = true; // Set the flag to indicate that the system is in the settling region
             }
             return true;
         } else {
-            message_settling = false; // Clear the flag to indicate that the system is not in the settling region
+            // message_settling = false; // Clear the flag to indicate that the system is not in the settling region
             return false;
         }
     }

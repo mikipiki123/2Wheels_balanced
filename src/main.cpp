@@ -69,6 +69,8 @@ typedef struct {
 
 CommandPacket command_packet; // Global command packet
 
+double initial_yaw = 0.0; // Initial yaw angle (rad)
+
 void vTelemetryTask(void *pvParameters) {
 
 ControlLoopParams* params = (ControlLoopParams*)pvParameters;
@@ -145,6 +147,7 @@ void Control_Loop(void *pvParameters) {
     double x_ref = 0.0; // Local copy of the target position
     double yaw_ref = 0.0; // Local copy of the target yaw
     const double yaw_initial = params->imu->angle_z; // Initial yaw angle (rad)
+    initial_yaw = yaw_initial; // Store the initial yaw angle globally
     const float YAW_THRESHOLD_RAD = 0.052f;
 
     while (1) {
@@ -167,6 +170,9 @@ void Control_Loop(void *pvParameters) {
                 xSemaphoreGive(xConfigMutex);
             }
 
+            double norm_yaw = params->fullController->wrap_angle_rad(params->imu->angle_z - initial_yaw);
+            double yaw_error = params->fullController->wrap_angle_rad(yaw_ref - norm_yaw);
+
             // std::cout << "current angle: " << params->imu->angle_z << " rad, Target Yaw: " << yaw_ref << " rad" << std::endl;
 
             
@@ -179,12 +185,8 @@ void Control_Loop(void *pvParameters) {
 
             double u_yaw = 0.0;
 
-
-
-
-
-            if (!params->fullController->is_in_setteling_region_yaw(params->fullController->wrap_angle_rad(yaw_ref - params->imu->angle_z), YAW_THRESHOLD_RAD, params->imu->angular_velocity_z) && param_types->fullController->message_settling) {
-                u_yaw = params->fullController->ControllerPsi(params->imu->angle_z, params->imu->angular_velocity_z, PERIOD_MS/1000.0, yaw_ref);
+            if (!params->fullController->is_in_setteling_region_yaw(yaw_error, YAW_THRESHOLD_RAD, params->imu->angular_velocity_z) && params->fullController->message_settling_x) {
+                u_yaw = params->fullController->ControllerPsi(norm_yaw, params->imu->angular_velocity_z, PERIOD_MS/1000.0, yaw_ref);
             }
 
 
@@ -368,30 +370,32 @@ void vCommandRecieveTask(void *pvParameters) {
                     std::string ack = "Target position updated to " + std::to_string(new_x_ref) + ", settling zone: " + std::to_string(0.2 * std::pow(std::abs(new_x_ref - params->fullController->prev_target_inner), 0.6)) + "\n";
                     send(client_sock, ack.c_str(), ack.length(), 0);
 
-                    while (!params->fullController->message_settling) {
-                        std::string psi_msg = "Current Yaw: " + std::to_string(params->imu->angle_z) + " rad, Target Yaw: " + std::to_string(command_packet.yaw_reference) + " rad\n";
-                        send(client_sock, psi_msg.c_str(), psi_msg.length(), 0);
+                    while (!params->fullController->message_settling_x) {
+                        std::string is_settled_msg = "not settled? : " + std::to_string(params->fullController->can_settle) + "\n";
+                        send(client_sock, is_settled_msg.c_str(), is_settled_msg.length(), 0);
                         vTaskDelay(pdMS_TO_TICKS(50)); // Wait for 50 ms before checking again
                     }
                     std::string settling_msg = "Entering settling region. start correcting yaw..\n";
                     send(client_sock, settling_msg.c_str(), settling_msg.length(), 0);
-                    while (std::abs(params->fullController->wrap_angle_rad(command_packet.yaw_reference - params->imu->angle_z)) > 0.052f) {
-                        std::string psi_msg = "Current Yaw: " + std::to_string(params->imu->angle_z) + " rad, Target Yaw: " + std::to_string(command_packet.yaw_reference) + " rad\n";
-                        send(client_sock, psi_msg.c_str(), psi_msg.length(), 0);
-                        vTaskDelay(pdMS_TO_TICKS(50)); // Wait for 50 ms before checking again
-                    }
+                    // while (std::abs(params->fullController->wrap_angle_rad(command_packet.yaw_reference - params->imu->angle_z)) > 0.052f) {
+                    //     std::string psi_msg = "Current Yaw: " + std::to_string(params->imu->angle_z) + " rad, Target Yaw: " + std::to_string(command_packet.yaw_reference) + " rad\n";
+                    //     send(client_sock, psi_msg.c_str(), psi_msg.length(), 0);
+                    //     vTaskDelay(pdMS_TO_TICKS(50)); // Wait for 50 ms before checking again
+                    // }
                 }
             } else if (rx.rfind("Yaw=", 0) == 0 || rx.rfind("yaw=", 0) == 0) { // Check if the command starts with "Y="
                 std::string value_str = rx.substr(4); // Extract the value after "Y="
-                double new_yaw_ref = std::stod(value_str); // Convert to double
+                double new_yaw_ref = std::stod(value_str); // degrees
+                double yaw_ref_rad = 0.0174533 * new_yaw_ref; // radians
                 if (xSemaphoreTake(xConfigMutex, portMAX_DELAY) == pdTRUE) {
-                    command_packet.yaw_reference = new_yaw_ref; // Update the global target yaw
+                    command_packet.yaw_reference = yaw_ref_rad; // Update the global target yaw
                     xSemaphoreGive(xConfigMutex);
 
-                    std::string ack = "Target yaw updated to " + std::to_string(new_yaw_ref) + "\n";
+                    std::string ack = "Target yaw updated to " + std::to_string(new_yaw_ref) + "degrees\n";
                     send(client_sock, ack.c_str(), ack.length(), 0);
-                    while (std::abs(params->imu->angle_z - command_packet.yaw_reference) > 0.052f) {
-                        std::string psi_msg = "Current Yaw: " + std::to_string(params->imu->angle_z) + " rad, Target Yaw: " + std::to_string(command_packet.yaw_reference) + " rad\n";
+
+                    while (params->fullController->wrap_angle_rad(command_packet.yaw_reference - params->fullController->wrap_angle_rad(params->imu->angle_z - initial_yaw)) > 0.052f) {
+                        std::string psi_msg = "Error Yaw: " + std::to_string(params->fullController->wrap_angle_rad(yaw_ref_rad - (params->imu->angle_z + initial_yaw))*57.2958) + " degrees, Target Yaw: " + std::to_string(new_yaw_ref) + " degrees\n";
                         send(client_sock, psi_msg.c_str(), psi_msg.length(), 0);
                         vTaskDelay(pdMS_TO_TICKS(50)); // Wait for 50 ms before checking again
                     }
@@ -429,7 +433,6 @@ int main() {
         imu.read_sensor_fusion(PERIOD_MS * 1000); // Read sensor fusion data from IMU
         sleep_ms(PERIOD_MS); // Wait for 5 ms (200 Hz)
     }
-    command_packet.yaw_reference = imu.angle_z; // Initialize the target yaw to the current yaw angle
 
 
     // AngleController angleController;
