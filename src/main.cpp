@@ -171,7 +171,7 @@ void Control_Loop(void *pvParameters) {
 
             
             // ControlLoopParams* params = (ControlLoopParams*)pvParameters;
-            params->imu->read_sensor_fusion_x(PERIOD_MS * 1000); // Read sensor fusion data from IMU
+            params->imu->read_sensor_fusion(PERIOD_MS * 1000); // Read sensor fusion data from IMU
 
             double u_r = params->fullController->ControllerR(params->imu->angle_x, params->imu->angular_velocity_x, PERIOD_MS/1000.0, x_ref); // dt = 0.005 s (5 ms) = 200 Hz, target_x = 0.1 (m)
 
@@ -179,9 +179,13 @@ void Control_Loop(void *pvParameters) {
 
             double u_yaw = 0.0;
 
-            // if (params->imu->angle_z - yaw_ref > YAW_THRESHOLD_RAD && params->fullController->message_settling) {
-            //     u_yaw = params->fullController->ControllerPsi(params->imu->angle_z, params->imu->angular_velocity_z, PERIOD_MS/1000.0, yaw_ref);
-            // }            
+
+
+
+
+            if (!params->fullController->is_in_setteling_region_yaw(params->fullController->wrap_angle_rad(yaw_ref - params->imu->angle_z), YAW_THRESHOLD_RAD, params->imu->angular_velocity_z) && param_types->fullController->message_settling) {
+                u_yaw = params->fullController->ControllerPsi(params->imu->angle_z, params->imu->angular_velocity_z, PERIOD_MS/1000.0, yaw_ref);
+            }
 
 
             // Differential mixing
@@ -361,17 +365,21 @@ void vCommandRecieveTask(void *pvParameters) {
                     command_packet.x_reference = new_x_ref; // Update the global target position
                     xSemaphoreGive(xConfigMutex);
 
-                    std::string ack = "Target position updated to " + std::to_string(new_x_ref) + "\n";
+                    std::string ack = "Target position updated to " + std::to_string(new_x_ref) + ", settling zone: " + std::to_string(0.2 * std::pow(std::abs(new_x_ref - params->fullController->prev_target_inner), 0.6)) + "\n";
                     send(client_sock, ack.c_str(), ack.length(), 0);
 
-                    
-                    // while (std::abs(params->imu->angle_z - command_packet.yaw_reference) > 0.052f) {
-                    //     std::string psi_msg = "Current Yaw: " + std::to_string(params->imu->angle_z) + " rad, Target Yaw: " + std::to_string(command_packet.yaw_reference) + " rad\n";
-                    //     send(client_sock, psi_msg.c_str(), psi_msg.length(), 0);
-                    //     vTaskDelay(pdMS_TO_TICKS(50)); // Wait for 50 ms before checking again
-                    // }
-                    // std::string settling_msg = "Entering settling region.\n";
-                    // send(client_sock, settling_msg.c_str(), settling_msg.length(), 0);
+                    while (!params->fullController->message_settling) {
+                        std::string psi_msg = "Current Yaw: " + std::to_string(params->imu->angle_z) + " rad, Target Yaw: " + std::to_string(command_packet.yaw_reference) + " rad\n";
+                        send(client_sock, psi_msg.c_str(), psi_msg.length(), 0);
+                        vTaskDelay(pdMS_TO_TICKS(50)); // Wait for 50 ms before checking again
+                    }
+                    std::string settling_msg = "Entering settling region. start correcting yaw..\n";
+                    send(client_sock, settling_msg.c_str(), settling_msg.length(), 0);
+                    while (std::abs(params->fullController->wrap_angle_rad(command_packet.yaw_reference - params->imu->angle_z)) > 0.052f) {
+                        std::string psi_msg = "Current Yaw: " + std::to_string(params->imu->angle_z) + " rad, Target Yaw: " + std::to_string(command_packet.yaw_reference) + " rad\n";
+                        send(client_sock, psi_msg.c_str(), psi_msg.length(), 0);
+                        vTaskDelay(pdMS_TO_TICKS(50)); // Wait for 50 ms before checking again
+                    }
                 }
             } else if (rx.rfind("Yaw=", 0) == 0 || rx.rfind("yaw=", 0) == 0) { // Check if the command starts with "Y="
                 std::string value_str = rx.substr(4); // Extract the value after "Y="
@@ -382,6 +390,11 @@ void vCommandRecieveTask(void *pvParameters) {
 
                     std::string ack = "Target yaw updated to " + std::to_string(new_yaw_ref) + "\n";
                     send(client_sock, ack.c_str(), ack.length(), 0);
+                    while (std::abs(params->imu->angle_z - command_packet.yaw_reference) > 0.052f) {
+                        std::string psi_msg = "Current Yaw: " + std::to_string(params->imu->angle_z) + " rad, Target Yaw: " + std::to_string(command_packet.yaw_reference) + " rad\n";
+                        send(client_sock, psi_msg.c_str(), psi_msg.length(), 0);
+                        vTaskDelay(pdMS_TO_TICKS(50)); // Wait for 50 ms before checking again
+                    }
                 }
             } else {
                 send(client_sock, "What?\n", 6, 0);
@@ -402,13 +415,22 @@ int main() {
     printf("Starting IMU read...\n");
     printf("--------------------------------------------\n");
 
+
     MotorController motorController; // Create an instance of the MotorController class
 
    
     printf("Initializing Motor Controller...\n");
     printf("--------------------------------------------\n");
 
-    sleep_ms(5000); // Wait for 5 seconds to allow the IMU to stabilize
+    sleep_ms(3000); // Wait for 5 seconds to allow the IMU to stabilize
+
+    // Run fusion updates for 500 ms to allow angle_z to stabilize
+    for (int i = 0; i < 100; i++) {
+        imu.read_sensor_fusion(PERIOD_MS * 1000); // Read sensor fusion data from IMU
+        sleep_ms(PERIOD_MS); // Wait for 5 ms (200 Hz)
+    }
+    command_packet.yaw_reference = imu.angle_z; // Initialize the target yaw to the current yaw angle
+
 
     // AngleController angleController;
     FullController fullController; // Create an instance of the FullController class

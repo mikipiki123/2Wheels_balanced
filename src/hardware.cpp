@@ -134,7 +134,7 @@ void IMU_sensor::calibrate_gyro() {
 //     return true;
 // }
 
-bool IMU_sensor::read_sensor_fusion_x(uint64_t delta_us) {
+bool IMU_sensor::read_sensor_fusion(uint64_t delta_us) {
     uint8_t reg = 0x3B; 
     uint8_t buffer[14];
 
@@ -218,7 +218,7 @@ IMU_sensor::IMU_sensor() {
     init_magnetometer();
     // calibrate_magnetometer();
 
-    read_sensor_fusion_x(5000); // Initial read to set angles
+    read_sensor_fusion(5000); // Initial read to set angles
 }
 
 

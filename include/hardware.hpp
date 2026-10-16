@@ -45,7 +45,7 @@ class IMU_sensor {
     float angular_velocity_z = 0.0f;   // Yaw rate (rad/s)
 
     IMU_sensor();
-    bool read_sensor_fusion_x(uint64_t delta_us);
+    bool read_sensor_fusion(uint64_t delta_us);
 };
 
 

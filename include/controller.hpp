@@ -39,6 +39,7 @@ class FullController : public SSController {
     double x_dot = 0.0; // Linear velocity of the robot (m/s)
     double x = 0.0; // Position in meters
     double psi = 0.0; // Yaw angle (rad)
+    double psi_dot = 0.0; // Yaw rate (rad/s)
 
     double integral_action_pos = 0.0; // Integral action for position control
     double integral_action_yaw = 0.0; // Integral action for yaw control
@@ -58,9 +59,23 @@ class FullController : public SSController {
     void integrate_velocity(double dt);
     void tune_gains(double dt, double target_x);
 
-    bool is_in_setteling_region(double e_x, double sett_tol, double integral_action_pos, double x_dot){
-        if (std::abs(e_x) < sett_tol && std::abs(x_dot) < 0.015) {
-            message_settling = true; // Set the flag to indicate that the system is in the settling region
+    bool is_in_setteling_region_x(double e_x, double sett_tol, double integral_action_pos, double x_dot){
+        if (std::abs(e_x) < sett_tol && std::abs(x_dot) < 0.03) {
+            if (!message_settling) {
+                message_settling = true; // Set the flag to indicate that the system is in the settling region
+            }
+            return true;
+        } else {
+            message_settling = false; // Clear the flag to indicate that the system is not in the settling region
+            return false;
+        }
+    }
+
+    bool is_in_setteling_region_yaw(double e_psi, double sett_tol, double psi_dot){
+        if (std::abs(e_psi) < 0.052f && std::abs(psi_dot) < 0.3) {
+            if (!message_settling) {
+                message_settling = true; // Set the flag to indicate that the system is in the settling region
+            }
             return true;
         } else {
             message_settling = false; // Clear the flag to indicate that the system is not in the settling region
@@ -101,8 +116,9 @@ class FullController : public SSController {
 // double K[5] = { -56.5440, -67.0199, -715.3253, -40.6780, -50.3607 }; // Controller gains (u = -K*x) - good gains
 // double K[5] = { -50.5090, -60.3163, -350.2072, -30.7753, -20.7566 };
     double K_Yaw[3] = {1.0, 0.3, 0}; // Controller gains for yaw control
-    double K_Good[5] = { -30.2407f, -100.7864f, -400.2284f, -30.4034f, -6.9480f }; // Controller gains for balancing (u = -K*x)
+    // double K_Good[5] = { -30.2407f, -100.7864f, -400.2284f, -30.4034f, -6.9480f }; // Controller gains for balancing (u = -K*x)
     // double K[5] = { -70.4100f, -93.9182f, -400.0790f, -30.5802f, -4.9677f }; // Controller gains
+    double K_Good[5] = { -80.7050f, -83.5533f, -640.8030f, -75.1673f, -23.2288f }; // Controller gains, x_ref = 0.1000 m
     double K[5] = { -80.7050f, -83.5533f, -640.8030f, -75.1673f, -23.2288f }; // Controller gains, x_ref = 0.1000 m
     // double K[5] = { -5.0f, -5.0f, -100.2284f, -5.4034f, -0.0f }; // Controller gains
 };

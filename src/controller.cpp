@@ -115,7 +115,7 @@ void FullController::tune_gains(double dt, double target_x) {
     // 2. Compute s-plane poles matching control_analysis.py exactly
     double e_x = std::abs(target_x - this->x); // Position error
 
-    double s_pos1   = -1.0 / (std::pow(3.0 * e_x, 2.0) + 0.8) - 0.05; //std::pow(3.0 * e_x, 2.0) + 0.8) - 0.05
+    double s_pos1   = -1.0 / (std::pow(3.0 * e_x, 4.0) + 0.9) - 0.08; //std::pow(3.0 * e_x, 2.0) + 0.8) - 0.05
     // double s_pos1 = -2.0;
     double s_pos2   = -1.0 / (std::pow(2.0 * e_x, -1.0) + 0.5) - 3.0;
     double s_tilt_r = -3.50;
@@ -168,32 +168,26 @@ void FullController::integrate_velocity(double dt) {
 
 double FullController::ControllerPsi(double psi, double psi_dot, double dt, double target_psi) {
 
-    double e_psi = wrap_angle_rad(psi - target_psi); // Yaw error
+    double e_psi = wrap_angle_rad(target_psi - psi); 
 
-    this->integral_action_yaw += e_psi * dt; // Integrate yaw error for integral action
+    this->psi = psi; 
+    this->psi_dot = psi_dot;
 
-    if (target_psi != this->target_psi_prev) {
-        this->integral_action_yaw = 0.0; // Reset integral action when target yaw changes
-        this->target_psi_prev = target_psi;   // Update previous target yaw
-    }
+    // this->integral_action_yaw += e_psi * dt; // Integrate yaw error for integral action
 
-    this->integral_action_yaw = std::clamp(this->integral_action_yaw, -100.0, 100.0); // Clamp integral action to prevent windup
-
-
-    // // 2. Deadband Threshold (~1.5 degrees = 0.026 rad) to prevent motor chatter
-    // const float YAW_THRESHOLD_RAD = 0.026f;
-    // float position_error = 0.0f;
-
-    // if (e_psi > YAW_THRESHOLD_RAD) {
-    //     position_error = e_psi - YAW_THRESHOLD_RAD;
-    // } else if (e_psi < -YAW_THRESHOLD_RAD) {
-    //     position_error = e_psi + YAW_THRESHOLD_RAD;
-    // } else {
-    //     position_error = 0.0f; // Inside deadband: zero position correction
+    // if (target_psi != this->target_psi_prev) {
+    //     this->integral_action_yaw = 0.0; // Reset integral action when target yaw changes
+    //     this->target_psi_prev = target_psi;   // Update previous target yaw
     // }
 
-    return (this->K_Yaw[0] * e_psi) + (this->K_Yaw[1] * psi_dot) 
-           + (this->integral_action_yaw * this->K_Yaw[2]); // Integral action for yaw control
+    // this->integral_action_yaw = std::clamp(this->integral_action_yaw, -100.0, 100.0); // Clamp integral action to prevent windup
+
+    // 3. PD/PID Control Law: + Kp*e - Kd*psi_dot + Ki*integral
+    double u_yaw = (this->K_Yaw[0] * e_psi) 
+                 - (this->K_Yaw[1] * psi_dot); 
+                //  + (this->K_Yaw[2] * this->integral_action_yaw);
+
+    return u_yaw;
 }
 
 double FullController::ControllerR(double theta, double theta_dot, double dt, double target_x) {
@@ -217,8 +211,12 @@ double FullController::ControllerR(double theta, double theta_dot, double dt, do
         this->is_settling = true; // Set settling flag
     }
 
-    if (is_in_setteling_region(e_x, 0.3 * std::abs(target_x - prev_target_inner), this->integral_action_pos, this->x_dot) && this->is_settling) {// is_settling is for not tuning each iteration in the region.
+    // if (is_in_setteling_region(e_x, 0.2 * std::pow(std::abs(target_x - prev_target_inner), 0.6), this->integral_action_pos, this->x_dot) && this->is_settling) {// is_settling is for not tuning each iteration in the region.
+    if (is_in_setteling_region_x(e_x, 0.2 * std::abs(target_x - prev_target_inner), this->integral_action_pos, this->x_dot) && this->is_settling) {// is_settling is for not tuning each iteration in the region.
         this->integral_action_pos = 0.0; // Reset integral action when in settling region
+        // for (int i = 0; i < 5; ++i) {
+        //     this->K[i] = this->K_Good[i]; // Use good gains when in settling region
+        // }
         tune_gains(dt, target_x); // Re-tune gains when in settling region
         this->is_settling = false; // Set settling flag
     }
