@@ -136,11 +136,11 @@ def compute_5d_discrete_controller():
     # s_tilt_i = 2.80   # Tilt oscillation frequency
     # s_int = -0.40     # Integral action
 
-    x_ref = 0.10  # Desired position reference (m)
+    x_ref = 0.1  # Desired position reference (m)
 
-    s_pos1 = -1.0/(math.pow(3.0 * x_ref, 2.0)+ 0.8) - 0.05 
+    s_pos1 = -1.0/(math.pow(2.0 * x_ref, 2.0)+ 0.9) - 0.05 
       # Position convergence (~3.5 s settling time)
-    s_pos2 = -1.0/(math.pow(2.0 * x_ref, -1.0)+ 0.5) - 3.0   # Velocity damping
+    s_pos2 = -1.0/(math.pow(2.0 * x_ref, -1.0)+ 0.9) - 5.0   # Velocity damping
     s_tilt_r = -3.50  # Tilt damping real part
     s_tilt_i = 3.50   # Tilt oscillation frequency
     s_int = -1.0/(math.pow(3.0 * x_ref, 3.0)+ 2.5) - 0.1   # Integral action

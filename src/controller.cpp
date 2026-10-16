@@ -115,9 +115,9 @@ void FullController::tune_gains(double dt, double target_x) {
     // 2. Compute s-plane poles matching control_analysis.py exactly
     double e_x = std::abs(target_x - this->x); // Position error
 
-    double s_pos1   = -1.0 / (std::pow(2.0 * e_x, 4.0) + 0.9) - 0.08; //std::pow(3.0 * e_x, 2.0) + 0.8) - 0.05
+    double s_pos1   = -1.0 / (std::pow(2.0 * e_x, 4.0) + 0.9) - 0.05; //std::pow(3.0 * e_x, 2.0) + 0.8) - 0.05
     // double s_pos1 = -2.0;
-    double s_pos2   = -1.0 / (std::pow(2.0 * e_x, -1.0) + 0.5) - 3.0;
+    double s_pos2   = -1.0 / (std::pow(2.0 * e_x, -1.0) + 0.9) - 5.0;
     double s_tilt_r = -3.50;
     double s_tilt_i =  3.50;                     
     // double s_int = -1.2;
@@ -196,7 +196,9 @@ double FullController::ControllerR(double theta, double theta_dot, double dt, do
 
     integrate_velocity(dt);
 
-    this->integral_action_pos += e_x * dt; // Integrate position for integral action
+    if(!is_in_setteling_region_x(e_x, 0.02, this->x_dot)) { // tight settling stops integration
+        this->integral_action_pos += e_x * dt; // Integrate position for integral action   
+    }
 
     // if (std::abs(e_x) < 0.02 && std::abs(this->x_dot) > 0.2) { // Only apply leaky integrator when close to target
     //     this->integral_action_pos *= 0.99; // Apply leaky integrator to prevent windup

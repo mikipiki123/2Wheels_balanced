@@ -59,6 +59,8 @@ typedef struct {
     float theta_dot;   // Angular velocity (rad/s)
     float x_integral;  // Position error integral
     float w_motor;     // Control output (rad/s^2)
+    float psi;         // Normalized Yaw angle (rad)
+    float psi_dot;     // Yaw angular velocity (rad/s)
 } TelemetryPacket;
 #pragma pack(pop)
 
@@ -107,6 +109,8 @@ ControlLoopParams* params = (ControlLoopParams*)pvParameters;
         packet.theta_dot  = (float)params->imu->angular_velocity_x;
         packet.x_integral = (float)params->fullController->integral_action_pos;
         packet.w_motor    = (float)params->fullController->w;
+        packet.psi        = (float)params->fullController->wrap_angle_rad(params->imu->angle_z - initial_yaw);
+        packet.psi_dot    = (float)params->imu->angular_velocity_z;
 
         // if (xSemaphoreTake(xConfigMutex, 0) == pdTRUE) {
         //     std::cout << "Psi: " << params->imu->angle_z << " rad, Psi_dot: " << params->imu->angular_velocity_z << " rad/s, Target Yaw: " << command_packet.yaw_reference << " rad" << std::endl;           
