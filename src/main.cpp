@@ -27,8 +27,8 @@
 #include "lwip/inet.h"
 #include "lwip/apps/mdns.h"
 
-#define WIFI_SSID "AA"
-#define WIFI_PASSWORD "miminovalico"
+#define WIFI_SSID "bernerm"
+#define WIFI_PASSWORD "mikipiki12"
 #define SERVER_PORT    5000
 #define HOSTNAME    "robot" // Will resolve to robot.local
 
@@ -153,6 +153,7 @@ void Control_Loop(void *pvParameters) {
     const double yaw_initial = params->imu->angle_z; // Initial yaw angle (rad)
     initial_yaw = yaw_initial; // Store the initial yaw angle globally
     const float YAW_THRESHOLD_RAD = 0.052f;
+    
 
     while (1) {
 
@@ -187,10 +188,17 @@ void Control_Loop(void *pvParameters) {
 
             params->fullController->w += u_r*(PERIOD_MS/1000.0); // Integrate control input to get angular velocity command
 
+            // Calculate remaining headroom for yaw
+            double max_yaw_headroom = 30 - std::abs(params->fullController->w);
+            if (max_yaw_headroom < 0.0) max_yaw_headroom = 0.0; // Dedicated 100% to balance
+
             double u_yaw = 0.0;
 
-            if (!params->fullController->is_in_setteling_region_yaw(yaw_error, YAW_THRESHOLD_RAD, params->imu->angular_velocity_z) && params->fullController->message_settling_x) {
+            if (!params->fullController->is_in_setteling_region_yaw(yaw_error, YAW_THRESHOLD_RAD, params->imu->angular_velocity_z) && params->fullController->message_is_settled) {
                 u_yaw = params->fullController->ControllerPsi(norm_yaw, params->imu->angular_velocity_z, PERIOD_MS/1000.0, yaw_ref);
+                
+                // Clamp u_yaw to available headroom
+                u_yaw = std::clamp(u_yaw, -max_yaw_headroom, max_yaw_headroom);
             }
 
 
@@ -371,11 +379,12 @@ void vCommandRecieveTask(void *pvParameters) {
                     command_packet.x_reference = new_x_ref; // Update the global target position
                     xSemaphoreGive(xConfigMutex);
 
-                    std::string ack = "Target position updated to " + std::to_string(new_x_ref) + ", settling zone: " + std::to_string(0.2 * std::pow(std::abs(new_x_ref - params->fullController->prev_target_inner), 0.6)) + "\n";
+                    std::string ack = "Target position updated to " + std::to_string(new_x_ref) + ", settling zone: " + std::to_string(0.2 * std::pow(std::abs(new_x_ref - params->fullController->target_x_prev), 0.6)) + "\n";
                     send(client_sock, ack.c_str(), ack.length(), 0);
 
-                    while (!params->fullController->message_settling_x) {
-                        std::string is_settled_msg = "not settled? : " + std::to_string(params->fullController->can_settle) + "\n";
+                    while (!params->fullController->message_is_settled) { // when false - in settling region
+                        // std::string is_settled_msg = "not settled? : " + std::to_string(params->fullController->ready_to_settle) + "\n";
+                        std::string is_settled_msg = "message settling? : " + std::to_string(params->fullController->message_is_settled) + "\n";
                         send(client_sock, is_settled_msg.c_str(), is_settled_msg.length(), 0);
                         vTaskDelay(pdMS_TO_TICKS(50)); // Wait for 50 ms before checking again
                     }
@@ -399,7 +408,7 @@ void vCommandRecieveTask(void *pvParameters) {
                     send(client_sock, ack.c_str(), ack.length(), 0);
 
                     while (params->fullController->wrap_angle_rad(command_packet.yaw_reference - params->fullController->wrap_angle_rad(params->imu->angle_z - initial_yaw)) > 0.052f) {
-                        std::string psi_msg = "Error Yaw: " + std::to_string(params->fullController->wrap_angle_rad(yaw_ref_rad - (params->imu->angle_z + initial_yaw))*57.2958) + " degrees, Target Yaw: " + std::to_string(new_yaw_ref) + " degrees\n";
+                        std::string psi_msg = "Absolute Yaw: " + std::to_string(params->imu->angle_z*57.2958) + " degrees, is settled? : " + std::to_string(params->fullController->message_is_settled) + "\n";
                         send(client_sock, psi_msg.c_str(), psi_msg.length(), 0);
                         vTaskDelay(pdMS_TO_TICKS(50)); // Wait for 50 ms before checking again
                     }

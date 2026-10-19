@@ -24,7 +24,7 @@ https://github.com/user-attachments/assets/70e26cd5-e973-4f93-8034-186bfde12b96
 
 ## 🧮 Control Architecture & Physics
 
-The robot is modeled as a non-minimum phase coupled inverted pendulum system operating at a $100\text{ Hz}$ control loop ($T_s = 10\text{ ms}$).
+The robot is modeled as a non-minimum phase coupled inverted pendulum system operating at a $200\text{ Hz}$ control loop ($T_s = 5\text{ ms}$).
 
 ### 5D State Vector
 $$\mathbf{x} = \begin{bmatrix} x & \dot{x} & \theta & \dot{\theta} & x_{\text{int}} \end{bmatrix}^T$$
@@ -45,27 +45,28 @@ $$
 
 $$
 \mathbf{A} = \begin{bmatrix} 
+1 & T_\text{s} & 0 & 0 & 0 \\ 
 0 & 1 & 0 & 0 & 0 \\ 
-0 & 0 & 0 & 0 & 0 \\ 
-0 & 0 & 0 & 1 & 0 \\ 
-0 & 0 & \frac{M_{\text{tot}} g l_{\text{tot}}}{I_{\text{axle}}} & 0 & 0 \\ 
-1 & 0 & 0 & 0 & 0 
+0 & 0 & 1 & T_\text{s} & 0 \\ 
+0 & 0 & \frac{M_{\text{tot}} g l_{\text{tot}}}{I_{\text{axle}}} T_\text{s} & 1 & 0 \\ 
+T_\text{s} & 0 & 0 & 0 & 1 
 \end{bmatrix}, \quad 
 \mathbf{B} = \begin{bmatrix} 
 0 \\ 
-R_{\text{wheel}} \\ 
+R_{\text{wheel}s} T_\text{s} \\ 
 0 \\ 
--\frac{M_{\text{tot}} l_{\text{tot}} R_{\text{wheel}}}{I_{\text{axle}}} \\ 
+-\frac{M_{\text{tot}} l_{\text{tot}} R_{\text{wheel}}}{I_{\text{axle}}} T_\text{s} \\ 
 0 
-\end{bmatrix}, \quad 
-\mathbf{Q} = \begin{bmatrix} 
-200 & 0 & 0 & 0 & 0 \\ 
-0 & 20 & 0 & 0 & 0 \\ 
-0 & 0 & 1000 & 0 & 0 \\ 
-0 & 0 & 0 & 50 & 0 \\ 
-0 & 0 & 0 & 0 & 500 
-\end{bmatrix}, \quad
-\mathbf{R} = 1
+\end{bmatrix}
+% , \quad 
+% \mathbf{Q} = \begin{bmatrix} 
+% 200 & 0 & 0 & 0 & 0 \\ 
+% 0 & 20 & 0 & 0 & 0 \\ 
+% 0 & 0 & 1000 & 0 & 0 \\ 
+% 0 & 0 & 0 & 50 & 0 \\ 
+% 0 & 0 & 0 & 0 & 500 
+% \end{bmatrix}, \quad
+% \mathbf{R} = 1
 $$
 
 * **Note:** 2D States is a reduced representation using the state vector: $\mathbf{x} = [\theta  \dot{\theta}]^T$.
@@ -103,7 +104,19 @@ https://github.com/user-attachments/assets/d2a9d3fa-b054-4aef-bfdb-3f8b991ba4c6
 
 * **RTOS Implementation:** Integrated FreeRTOS to improve code organization, modularity, and robustness.
 
-## Future updates
-* **Adaptive Response:** The robot currently takes the same amount of time to reach different reference positions, which can lead to aggressive behavior when tracking large reference changes. The goal is to adapt the controller’s response to the magnitude of the reference change.
+## Update: 19/10/26
 
-* **Expand to 2D Movement:** Implement yaw control to enable two-dimensional navigation. The robot will operate using radial coordinates, which will later be transformed into the XY plane by an external computer for mapping.
+* **Adaptive Response:** Using the Ackermann pole placement method, the robot now adapts its response dynamics to each reference position. This allows the controller to provide a less aggressive response for larger reference distances while maintaining appropriate behavior for smaller ones. The following images show the state responses generated using (`RTplot.py`), along with the corresponding pole placement strategy used:
+
+<p align="center">
+
+  <img src="images/states_response.png" width="40%" />
+
+  <img src="images/poles_per_meter.png" width="50%" />
+</p>
+
+
+* **2D movement:** Implemented yaw control to enable two-dimensional navigation. The robot operates in a cylindrical coordinate system, using the radial distance as the reference for position control and correcting its heading angle after reaching and settling at the target position.
+
+## Future updates:
+* **Navigation:** Develop a smart navigation module that converts Cartesian $(x,y)$ coordinates into the robot’s cylindrical coordinate representation, providing a foundation for implementing more advanced autonomous navigation and path-planning methods in future updates.

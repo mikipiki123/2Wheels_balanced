@@ -51,8 +51,8 @@ class FullController : public SSController {
     double target_psi_prev = 0.0; // Previous target yaw for derivative action
     double prev_target_inner = 0.1; //initial != 0.0 to avoid tolerance of zero in settling region calculation in boot
 
-    bool can_settle = false; // Flag to indicate if the system is in the settling region
-    bool message_settling_x = true; // Flag to allow tuning when in settling region
+    bool ready_to_settle = true; // Flag to indicate if the system is in the settling region
+    bool message_is_settled = false; // Flag to allow tuning when in settling region
 
     double ControllerR(double theta, double theta_dot, double dt, double target_x);
     double ControllerPsi(double psi, double psi_dot, double dt, double target_psi);
@@ -61,24 +61,24 @@ class FullController : public SSController {
 
     bool is_in_setteling_region_x(double e_x, double sett_tol, double x_dot){
         if (std::abs(e_x) < sett_tol && std::abs(x_dot) < 0.03) {
-            if (!message_settling_x) {
-                message_settling_x = true; // Set the flag to indicate that the system is in the settling region
+            if (!message_is_settled) {
+                message_is_settled = true; // Set the flag to indicate that the system is in the settling region
             }
             return true;
         } else {
-            message_settling_x = false; // Clear the flag to indicate that the system is not in the settling region
+            message_is_settled = false; // Clear the flag to indicate that the system is not in the settling region
             return false;
         }
     }
 
     bool is_in_setteling_region_yaw(double e_psi, double sett_tol, double psi_dot){
         if (std::abs(e_psi) < sett_tol && std::abs(psi_dot) < 2.0) {
-            if (!message_settling_x) {
-                // message_settling = true; // Set the flag to indicate that the system is in the settling region
+            if (!message_is_settled) {
+                // message_is_settled = true; // Set the flag to indicate that the system is in the settling region
             }
             return true;
         } else {
-            // message_settling = false; // Clear the flag to indicate that the system is not in the settling region
+            // message_is_settled = false; // Clear the flag to indicate that the system is not in the settling region
             return false;
         }
     }
@@ -118,8 +118,8 @@ class FullController : public SSController {
     double K_Yaw[3] = {1.0, 0.3, 0}; // Controller gains for yaw control
     // double K_Good[5] = { -30.2407f, -100.7864f, -400.2284f, -30.4034f, -6.9480f }; // Controller gains for balancing (u = -K*x)
     // double K[5] = { -70.4100f, -93.9182f, -400.0790f, -30.5802f, -4.9677f }; // Controller gains
-    // double K_Good[5] = { -80.7050f, -83.5533f, -640.8030f, -75.1673f, -23.2288f }; // Controller gains, x_ref = 0.1000 m
-    double K_Good[5] = { -167.0854f, -124.8536f, -734.2128f, -89.2414f, -71.5730f }; // Controller gains, x_ref = 0.0500 m
+    double K_Good[5] = { -167.0854f, -124.8536f, -734.2128f, -89.2414f, -71.5730f }; // Controller gains, x_ref = 0.1000 m
+    // double K_Good[5] = { -167.0854f, -124.8536f, -734.2128f, -89.2414f, -71.5730f }; // Controller gains, x_ref = 0.0500 m
     double K[5] = { -167.0854f, -124.8536f, -734.2128f, -89.2414f, -71.5730f }; // Controller gains, x_ref = 0.1000 m
     // double K[5] = { -5.0f, -5.0f, -100.2284f, -5.4034f, -0.0f }; // Controller gains
 };

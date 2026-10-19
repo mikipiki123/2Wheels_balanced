@@ -171,16 +171,47 @@ bool IMU_sensor::read_sensor_fusion(uint64_t delta_us) {
     this->angular_velocity_x = gyro_filtered;
 
     // --- YAW ESTIMATION WITH TILT-COMPENSATED MAGNETOMETER ---
+    // uint8_t mag_reg = 0x03;
+    // uint8_t mag_buf[7];
+    
+    // i2c_write_blocking(I2C_PORT, MAG_ADDR, &mag_reg, 1, true);
+    // i2c_read_blocking(I2C_PORT, MAG_ADDR, mag_buf, 7, false);
+
+    // // Apply Hard-Iron Offsets
+    // float mx = (float)((int16_t)((mag_buf[1] << 8) | mag_buf[0])) - mag_bias_x;
+    // float my = (float)((int16_t)((mag_buf[3] << 8) | mag_buf[2])) - mag_bias_y;
+    // float mz = (float)((int16_t)((mag_buf[5] << 8) | mag_buf[0])) - mag_bias_z;
+
+    // // Roll angle (needed for tilt compensation)
+    // float roll = std::atan2(ay, az); 
+
+    // // Tilt Compensation Equations
+    // float Mx = mx * std::cos(pitch) + my * std::sin(roll) * std::sin(pitch) + mz * std::cos(roll) * std::sin(pitch);
+    // float My = my * std::cos(roll) - mz * std::sin(roll);
+
+    // // Raw Magnetic Yaw Angle
+    // float raw_mag_yaw = std::atan2(-My, Mx);
+
+    // // Complementary Filter for Yaw
+    // static float yaw = 0.0f;
+    // const float ALPHA_YAW = 0.98f; // Trust gyro 98%, Mag 2%
+
+    // yaw = ALPHA_YAW * (yaw + gyro_yaw_rad * dt) + (1.00f - ALPHA_YAW) * raw_mag_yaw;
+
+    // this->angle_z = yaw;
+    // this->angular_velocity_z = gyro_yaw_rad;
+
+    // return true;
     uint8_t mag_reg = 0x03;
     uint8_t mag_buf[7];
     
     i2c_write_blocking(I2C_PORT, MAG_ADDR, &mag_reg, 1, true);
     i2c_read_blocking(I2C_PORT, MAG_ADDR, mag_buf, 7, false);
 
-    // Apply Hard-Iron Offsets
+    // Apply Hard-Iron Offsets (FIXED mag_buf[4] typo)
     float mx = (float)((int16_t)((mag_buf[1] << 8) | mag_buf[0])) - mag_bias_x;
     float my = (float)((int16_t)((mag_buf[3] << 8) | mag_buf[2])) - mag_bias_y;
-    float mz = (float)((int16_t)((mag_buf[5] << 8) | mag_buf[0])) - mag_bias_z;
+    float mz = (float)((int16_t)((mag_buf[5] << 8) | mag_buf[4])) - mag_bias_z; 
 
     // Roll angle (needed for tilt compensation)
     float roll = std::atan2(ay, az); 
@@ -189,14 +220,29 @@ bool IMU_sensor::read_sensor_fusion(uint64_t delta_us) {
     float Mx = mx * std::cos(pitch) + my * std::sin(roll) * std::sin(pitch) + mz * std::cos(roll) * std::sin(pitch);
     float My = my * std::cos(roll) - mz * std::sin(roll);
 
-    // Raw Magnetic Yaw Angle
+    // Raw Magnetic Yaw Angle [-PI, PI]
     float raw_mag_yaw = std::atan2(-My, Mx);
 
-    // Complementary Filter for Yaw
+    // --- CORRECTED COMPLEMENTARY FILTER (Boundary-Safe) ---
     static float yaw = 0.0f;
-    const float ALPHA_YAW = 0.98f; // Trust gyro 98%, Mag 2%
+    const float ALPHA_YAW = 0.98f; 
 
-    yaw = ALPHA_YAW * (yaw + gyro_yaw_rad * dt) + (1.0f - ALPHA_YAW) * raw_mag_yaw;
+    // 1. Advance the current yaw by the gyro rate
+    yaw += gyro_yaw_rad * dt;
+
+    // 2. Find the shortest angular path to the magnetometer reading
+    float yaw_error = raw_mag_yaw - yaw;
+    
+    // Wrap error to [-PI, PI]
+    while (yaw_error > M_PI)  yaw_error -= 2.0f * M_PI;
+    while (yaw_error < -M_PI) yaw_error += 2.0f * M_PI;
+
+    // 3. Apply the 2% correction along the shortest path
+    yaw += (1.00f - ALPHA_YAW) * yaw_error;
+
+    // 4. Ensure global yaw remains strictly bounded within [-PI, PI]
+    while (yaw > M_PI)  yaw -= 2.0f * M_PI;
+    while (yaw < -M_PI) yaw += 2.0f * M_PI;
 
     this->angle_z = yaw;
     this->angular_velocity_z = gyro_yaw_rad;

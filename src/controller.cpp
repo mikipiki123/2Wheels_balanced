@@ -115,13 +115,13 @@ void FullController::tune_gains(double dt, double target_x) {
     // 2. Compute s-plane poles matching control_analysis.py exactly
     double e_x = std::abs(target_x - this->x); // Position error
 
-    double s_pos1   = -1.0 / (std::pow(2.0 * e_x, 4.0) + 0.9) - 0.05; //std::pow(3.0 * e_x, 2.0) + 0.8) - 0.05
+    double s_pos1   = -1.0 / (std::pow(1.50 * e_x, 4.0) + 0.8) - 0.08; //std::pow(3.0 * e_x, 2.0) + 0.8) - 0.05
     // double s_pos1 = -2.0;
-    double s_pos2   = -1.0 / (std::pow(2.0 * e_x, -1.0) + 0.9) - 5.0;
+    double s_pos2   = -1.0 / (std::pow(1.0 * e_x, -1.7) + 0.8) - 3.45;
     double s_tilt_r = -3.50;
     double s_tilt_i =  3.50;                     
     // double s_int = -1.2;
-    double s_int    = -1.0/(std::pow(3.0 * e_x, 3.0)+ 2.5) - 0.1;//todo - setteling gains
+    double s_int    = -1.0/(std::pow(2.0 * e_x, 3.0)+ 3.0) - 0.15;//todo - setteling gains
 
     std::complex<double> s_poles[5] = {
         std::complex<double>(s_pos1, 0),
@@ -208,19 +208,19 @@ double FullController::ControllerR(double theta, double theta_dot, double dt, do
     if (target_x != this->target_x_prev) {
         this->integral_action_pos = 0.0; // Reset integral action when target position changes
         tune_gains(dt, target_x); // Re-tune gains based on new target position
-        this->prev_target_inner = target_x_prev; // Update previous target position for settling region detection
+        this->prev_target_inner = this->target_x_prev; // Update previous target position for settling region detection
         this->target_x_prev = target_x;   // Update previous target position
-        this->can_settle = true; // Set settling flag
-        this->message_settling_x = false; // Reset settling message flag
+        this->ready_to_settle = true; // Set settling flag
+        this->message_is_settled = false; // Reset settling message flag
     }
 
-    if (is_in_setteling_region_x(e_x, 0.2 * std::pow(std::abs(target_x - prev_target_inner), 0.6), this->x_dot) && this->can_settle) {// is_settling is for not tuning each iteration in the region.
+     if (is_in_setteling_region_x(e_x, 0.2 * std::pow(std::abs(target_x - this->prev_target_inner), 0.6), this->x_dot) && this->ready_to_settle) {// is_settling is for not tuning each iteration in the region.
         this->integral_action_pos = 0.0; // Reset integral action when in settling region
         for (int i = 0; i < 5; ++i) {
             this->K[i] = this->K_Good[i]; // Use good gains when in settling region
         }
         // tune_gains(dt, target_x); // Re-tune gains when in settling region
-        this->can_settle = false; // Set settling flag
+        this->ready_to_settle = false; // Set settling flag
     }
 
     this->integral_action_pos = std::clamp(this->integral_action_pos, -100.0, 100.0); // Clamp integral action to prevent windup
@@ -240,6 +240,11 @@ double FullController::ControllerR(double theta, double theta_dot, double dt, do
 
     return this->u_r;
 }
+
+
+
+
+
 
 double AngleController::Controller(double theta, double theta_dot, double dt){
 
